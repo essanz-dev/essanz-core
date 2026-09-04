@@ -1,0 +1,133 @@
+# Essanz — Beispiel-Konfiguration
+#
+# ALLE Werte in dieser Datei sind frei erfunden (siehe beispiel.portfolio, das dazu passt).
+# Für die eigene Nutzung: diese Datei nach config.yaml kopieren und mit den eigenen Werten
+# befüllen. config.yaml steht in .gitignore — sie wird nie versehentlich committet.
+#
+# Schema:
+#   zinsbindungen:      ein Eintrag je Darlehenskonto (Schlüssel = exakter Kontoname aus PP)
+#   objektstamm:        ein Eintrag je Objektnummer (aus dem Kontonamen "Immobilie N: ...")
+#   verkehrswert_herleitung: optional, wenn ein Gutachten mehrere Objekte gemeinsam bewertet
+#   steuer:             optional; ohne diesen Abschnitt bleiben die Steuerspalten leer
+#   allgemein:          Wechselkurse, welche Objekte selbstgenutzt sind, Schwellwerte
+
+zinsbindungen:
+  "Darlehenskonto 1":
+    ende: "2031-08-31"
+    sollzins: 3.45
+    sondertilgung: 8250
+    nennbetrag: 165000
+    kfw: false
+    quelle: "Darlehensvertrag Bergstraße 14 (Beispiel)"
+  "Darlehenskonto 2":
+    ende: "2032-03-31"
+    sollzins: 3.75
+    sondertilgung: 5750
+    nennbetrag: 115000
+    kfw: false
+    quelle: "Darlehensvertrag Ahornweg 7 (Beispiel)"
+  "Darlehenskonto 3":
+    ende: "2030-12-31"
+    sollzins: 3.20
+    sondertilgung: 11000
+    nennbetrag: 220000
+    kfw: false
+    quelle: "Darlehensvertrag Lindenallee 22 (Beispiel)"
+
+objektstamm:
+  "1":
+    baujahr: 1965
+    wohnflaeche_m2: 68.0
+    mieter_seit: "2022"
+    mieter_name: null
+    lage: "Musterstadt, Bergstraße 14"
+    lage_anonym: "Musterstadt"
+    bodenrichtwert: 320
+    bodenrichtwertdatum: "2024-01-01"
+    quelle: "Beispieldaten"
+  "2":
+    baujahr: 1978
+    wohnflaeche_m2: 54.0
+    mieter_seit: "2023"
+    mieter_name: null
+    lage: "Musterstadt, Ahornweg 7"
+    lage_anonym: "Musterstadt"
+    bodenrichtwert: 280
+    bodenrichtwertdatum: "2024-01-01"
+    quelle: "Beispieldaten"
+  "3":
+    baujahr: 1998
+    wohnflaeche_m2: 132.0
+    mieter_seit: null
+    mieter_name: null
+    lage: "Musterstadt, Lindenallee 22"
+    lage_anonym: "Musterstadt"
+    bodenrichtwert: 410
+    bodenrichtwertdatum: "2024-01-01"
+    quelle: "Beispieldaten"
+
+verkehrswert_herleitung: {}
+
+steuer:
+  grenzsteuersatz: 35.0
+  durchschnittsatz: 22.0
+  soli: 0.0
+  kirchensteuer: 0.0
+  quelle: "Beispieldaten"
+  jahr: 2025
+  zve: 90000
+  afa:
+    "1": {satz: 2.5, betrag: 1512.50, eigentum: "Beispiel: Alleineigentum"}
+    "2": {satz: 2.5, betrag: 1134.38, eigentum: "Beispiel: Alleineigentum"}
+    "3": {satz: 2.0, betrag: 4760.00, eigentum: "Beispiel: Alleineigentum"}
+  ergebnis:
+    "1": 1240
+    "2": 860
+    "3": -1180
+  anlage_v_zeile85:
+    "1": 1240
+    "2": 860
+  beteiligung: 0
+  vuv_person1: 2100
+  vuv_person2: 0
+  historie:
+    - jahr: 2024
+      status: "Beispiel"
+      bruttolohn: 90000
+      zve: 82000
+      est: 18500
+      kist: 0
+      soli: 0
+      erstattung: 0
+      vuv_person1: 1900
+      vuv_person2: 0
+      objekte: {"1": 980, "2": 640}
+    - jahr: 2025
+      status: "Beispiel"
+      bruttolohn: 92000
+      zve: 90000
+      est: 19800
+      kist: 0
+      soli: 0
+      erstattung: 0
+      vuv_person1: 2100
+      vuv_person2: 0
+      objekte: {"1": 1240, "2": 860, "3": -1180}
+
+allgemein:
+  fx:
+    EUR: 1.0
+  fx_date: "2026-08-31"
+  selbstgenutzt: ["3"]
+  ruecklage_eur_m2_monat_altbau: 1.10
+  ruecklage_eur_m2_monat_neubau: 0.80
+  anschluss_stress_pp: 2.0
+  p2p_konten: []
+  krypto_konten: []
+  kontoname_anonym: {}
+  benchmarks:
+    - label: "MSCI World"
+      security: "MSCI World"
+      kurz: "MSCI World (Beispielreihe)"
+      art: "Frei erfundene Vergleichsreihe für dieses Beispiel."
+      leitindex: true

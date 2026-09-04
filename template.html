@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="de" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vermögens-Dashboard</title>
+<style>
+:root{
+  --surface-0:#f6f5f2; --surface-1:#fcfcfb; --surface-2:#f0efec;
+  --line:#e3e2dd; --line-strong:#cfcec8;
+  --text-primary:#0b0b0b; --text-secondary:#52514e; --text-muted:#84837d;
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a; --s4:#eda100; --s5:#e87ba4; --s6:#4a3aa7;
+  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
+  --debt:#b0aea6;
+  color-scheme:light;
+}
+:root[data-theme="dark"]{
+  --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#232322;
+  --line:#33332f; --line-strong:#45443f;
+  --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#9085e9;
+  --debt:#6b6a63;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:dark){
+  :root:where(:not([data-theme="light"])){
+    --surface-0:#111110; --surface-1:#1a1a19; --surface-2:#232322;
+    --line:#33332f; --line-strong:#45443f;
+    --text-primary:#ffffff; --text-secondary:#c3c2b7; --text-muted:#8f8e85;
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --s4:#c98500; --s5:#d55181; --s6:#9085e9;
+    --debt:#6b6a63;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--surface-0);color:var(--text-primary);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 24px 96px}
+header.top{display:flex;justify-content:space-between;align-items:flex-start;gap:24px;flex-wrap:wrap;margin-bottom:8px}
+h1{font-size:22px;font-weight:650;margin:0 0 2px;letter-spacing:-.01em}
+.sub{color:var(--text-secondary);font-size:14px;margin:0}
+.theme-btn{background:var(--surface-1);border:1px solid var(--line);color:var(--text-secondary);
+  border-radius:8px;padding:7px 13px;font-size:13px;cursor:pointer;font-family:inherit}
+.theme-btn:hover{border-color:var(--line-strong);color:var(--text-primary)}
+section{margin-top:40px}
+h2{font-size:15px;font-weight:640;margin:0 0 4px;letter-spacing:.005em}
+h2 .n{color:var(--text-muted);font-weight:500;margin-right:8px}
+.note{color:var(--text-secondary);font-size:13.5px;margin:0 0 16px;max-width:76ch}
+.card{background:var(--surface-1);border:1px solid var(--line);border-radius:14px;padding:20px 22px}
+.hero{display:flex;flex-wrap:wrap;align-items:flex-end;gap:36px;margin:22px 0 26px}
+.hero .fig{font-size:52px;font-weight:660;letter-spacing:-.025em;line-height:1;
+  font-variant-numeric:tabular-nums}
+.hero .lbl{font-size:13px;color:var(--text-secondary);margin-bottom:9px}
+.hero .deltas{display:flex;gap:30px;padding-bottom:5px}
+.hero .d v{display:block;font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+.hero .d s{display:block;font-size:12px;color:var(--text-muted);text-decoration:none;margin-top:1px}
+.up{color:var(--good)} .down{color:var(--critical)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px}
+.tile{background:var(--surface-1);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile .l{font-size:12px;color:var(--text-secondary);margin-bottom:5px;min-height:2.4em;display:block}
+.tile .v{font-size:22px;font-weight:620;font-variant-numeric:tabular-nums;letter-spacing:-.015em}
+.tile .m{font-size:11.5px;color:var(--text-muted);margin-top:3px}
+.legend{display:flex;flex-wrap:wrap;gap:16px;margin:2px 0 12px}
+.legend i{display:inline-flex;align-items:center;gap:7px;font-style:normal;font-size:12.5px;color:var(--text-secondary)}
+.legend b{width:10px;height:10px;border-radius:3px;display:inline-block}
+.legend b.ln{height:3px;border-radius:2px;width:14px}
+figure{margin:0}
+svg{display:block;width:100%;overflow:visible}
+.grid line{stroke:var(--line);stroke-width:1}
+.axis text{fill:var(--text-muted);font-size:11px}
+.zero{stroke:var(--line-strong);stroke-width:1}
+table{width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{text-align:right;font-weight:560;color:var(--text-secondary);font-size:12px;padding:0 0 8px;
+  border-bottom:1px solid var(--line-strong);white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+td{text-align:right;padding:8px 0;border-bottom:1px solid var(--line);white-space:nowrap}
+td.name{white-space:normal;min-width:190px}
+tr:last-child td{border-bottom:none}
+tfoot td{font-weight:620;border-top:1px solid var(--line-strong);border-bottom:none}
+th+th,td+td{padding-left:14px}
+.chip{display:inline-block;padding:1px 7px;border-radius:100px;font-size:11px;font-weight:560;
+  border:1px solid var(--line-strong);color:var(--text-secondary)}
+.dot{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:8px;vertical-align:-1px}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+details.tbl{margin-top:14px}
+details.tbl summary{cursor:pointer;font-size:12.5px;color:var(--text-secondary);
+  list-style:none;display:inline-flex;align-items:center;gap:6px;padding:5px 10px;
+  border:1px solid var(--line);border-radius:8px;background:var(--surface-1)}
+details.tbl summary::-webkit-details-marker{display:none}
+details.tbl summary:hover{border-color:var(--line-strong);color:var(--text-primary)}
+details.tbl[open] summary{margin-bottom:12px}
+#tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .09s;z-index:99;
+  background:var(--surface-1);border:1px solid var(--line-strong);border-radius:10px;
+  padding:10px 12px;font-size:12.5px;box-shadow:0 6px 22px rgba(0,0,0,.13);min-width:170px;
+  font-variant-numeric:tabular-nums}
+#tip .t{font-weight:640;margin-bottom:6px;font-size:12.5px}
+#tip .r{display:flex;justify-content:space-between;gap:18px;line-height:1.7}
+#tip .r span:first-child{color:var(--text-secondary);display:flex;align-items:center;gap:7px}
+#tip .r.tot{border-top:1px solid var(--line);margin-top:5px;padding-top:5px;font-weight:620}
+.rec{background:var(--surface-1);border:1px solid var(--line);border-radius:14px;
+  padding:18px 22px;margin-bottom:12px}
+.rec h3{margin:0 0 6px;font-size:15px;font-weight:640;display:flex;align-items:flex-start;gap:10px}
+.rec h3 .pri{flex:none;font-size:11px;font-weight:620;padding:2px 8px;border-radius:100px;
+  margin-top:2px;letter-spacing:.02em}
+.pri.hoch{background:rgba(208,59,59,.13);color:var(--critical)}
+.pri.mittel{background:rgba(250,178,25,.18);color:#8a6100}
+:root[data-theme="dark"] .pri.mittel{color:var(--warning)}
+.pri.niedrig{background:rgba(12,163,12,.13);color:var(--good)}
+.rec p{margin:0 0 8px;font-size:14px;color:var(--text-secondary);max-width:88ch}
+.rec p:last-child{margin-bottom:0}
+.rec .facts{font-size:12.5px;color:var(--text-muted);display:flex;flex-wrap:wrap;gap:6px 18px;
+  margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.rec strong{color:var(--text-primary);font-weight:600}
+footer{margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:12px;color:var(--text-muted);max-width:80ch}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.bh{font-size:12px;font-weight:640;color:var(--text-secondary);text-transform:uppercase;
+  letter-spacing:.05em;margin-bottom:12px}
+.netcard{margin-top:16px;display:flex;justify-content:space-between;align-items:center;
+  flex-wrap:wrap;gap:18px;background:var(--surface-2)}
+.netcard .l{font-size:12.5px;color:var(--text-secondary);display:block;margin-bottom:3px}
+.netcard .v{font-size:26px;font-weight:640;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.netcard .s{font-size:19px;font-weight:600;font-variant-numeric:tabular-nums}
+
+/* ---------- Statusleiste und Reiter ---------- */
+.sticky{position:sticky;top:0;z-index:40;background:var(--surface-0);
+  padding-top:10px;margin:0 -24px;padding-left:24px;padding-right:24px}
+.statusbar{display:flex;flex-wrap:wrap;gap:6px 26px;align-items:baseline;
+  padding:11px 0 12px;border-bottom:1px solid var(--line)}
+.statusbar .s{display:flex;align-items:baseline;gap:8px;font-size:13px;color:var(--text-secondary)}
+.statusbar .s b{font-size:15px;font-weight:640;color:var(--text-primary);
+  font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.statusbar .s i{font-style:normal;font-size:11.5px;font-variant-numeric:tabular-nums}
+.lamp{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.statusbar .lamp{width:8px;height:8px}
+.lamp.gruen{background:var(--good)} .lamp.gelb{background:var(--warning)}
+.lamp.rot{background:var(--critical)} .lamp.unbekannt{background:var(--line-strong)}
+nav.tabs{display:flex;flex-wrap:wrap;gap:2px;padding:8px 0 10px;
+  border-bottom:1px solid var(--line);margin-bottom:8px}
+nav.tabs button{appearance:none;background:none;border:1px solid transparent;border-radius:9px;
+  padding:7px 13px;font:inherit;font-size:13.5px;color:var(--text-secondary);cursor:pointer;
+  white-space:nowrap}
+nav.tabs button:hover{background:var(--surface-2);color:var(--text-primary)}
+nav.tabs button[aria-selected="true"]{background:var(--surface-1);border-color:var(--line-strong);
+  color:var(--text-primary);font-weight:600}
+.view[hidden]{display:none}
+.view>section:first-child{margin-top:26px}
+
+/* ---------- Ampeln ---------- */
+.amp{background:var(--surface-1);border:1px solid var(--line);border-radius:12px;
+  margin-bottom:8px;overflow:hidden}
+.amp>summary{cursor:pointer;list-style:none;display:grid;
+  grid-template-columns:14px minmax(190px,1.5fr) minmax(96px,auto) minmax(84px,auto) 1fr 16px;
+  gap:14px;align-items:center;padding:13px 16px}
+.amp>summary::-webkit-details-marker{display:none}
+.amp>summary:hover{background:var(--surface-2)}
+.amp .lbl{font-size:14px;font-weight:560}
+.amp .val{font-size:17px;font-weight:640;font-variant-numeric:tabular-nums;text-align:right;
+  letter-spacing:-.01em}
+.amp .dlt{font-size:12.5px;font-variant-numeric:tabular-nums;text-align:right;color:var(--text-muted)}
+.amp .ziel{font-size:12.5px;color:var(--text-muted)}
+.amp .caret{color:var(--text-muted);font-size:12px;transition:transform .15s}
+.amp[open] .caret{transform:rotate(90deg)}
+.amp .warum{padding:0 16px 16px 44px;font-size:13.5px;color:var(--text-secondary);max-width:88ch}
+.amp .warum .skala{margin-top:9px;font-size:12.5px;color:var(--text-muted)}
+.amp .warum .skala b{color:var(--text-secondary);font-weight:600}
+.rechnung{margin:14px 0 4px;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:10px;padding:12px 15px;max-width:52ch}
+.rechnung .rh{font-size:11px;font-weight:640;color:var(--text-muted);text-transform:uppercase;
+  letter-spacing:.05em;margin-bottom:8px}
+.rechnung table{font-size:13px}
+.rechnung td{padding:4px 0;border-bottom:none;color:var(--text-secondary)}
+.rechnung td:last-child{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;
+  padding-left:18px;color:var(--text-primary)}
+.rechnung tr.summe td{border-top:1px solid var(--line-strong);font-weight:600;padding-top:7px}
+.rechnung tr.ergebnis td{border-top:1.5px solid var(--text-muted);font-weight:660;padding-top:7px;
+  color:var(--text-primary);font-size:13.5px}
+.rechnung tr.info td{color:var(--text-muted);font-size:12.5px}
+.rechnung tr.info:first-of-type td{padding-top:10px}
+.amp.rot{border-left:3px solid var(--critical)}
+.amp.gelb{border-left:3px solid var(--warning)}
+.amp.gruen{border-left:3px solid var(--good)}
+.amp.unbekannt{border-left:3px solid var(--line-strong)}
+@media(max-width:760px){.amp>summary{grid-template-columns:14px 1fr auto;row-gap:4px}
+  .amp .ziel,.amp .caret{display:none}.amp .warum{padding-left:16px}}
+
+/* ---------- Objektauswahl und Detail ---------- */
+.objpick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.objpick button{appearance:none;background:var(--surface-1);border:1px solid var(--line);
+  border-radius:9px;padding:8px 13px;font:inherit;font-size:13px;color:var(--text-secondary);
+  cursor:pointer;text-align:left}
+.objpick button:hover{border-color:var(--line-strong);color:var(--text-primary)}
+.objpick button[aria-pressed="true"]{background:var(--surface-2);border-color:var(--line-strong);
+  color:var(--text-primary);font-weight:600}
+.objpick button s{display:block;text-decoration:none;font-size:11.5px;color:var(--text-muted);
+  font-weight:400;font-variant-numeric:tabular-nums}
+.od{display:grid;grid-template-columns:1.15fr 1fr;gap:16px}
+@media(max-width:900px){.od{grid-template-columns:1fr}}
+.kv{display:grid;grid-template-columns:1fr auto;gap:7px 18px;font-size:13.5px;
+  font-variant-numeric:tabular-nums}
+.kv dt{color:var(--text-secondary)}
+.kv dd{margin:0;text-align:right;font-weight:560}
+.kv .sep{grid-column:1/-1;border-top:1px solid var(--line);margin:5px 0 1px}
+.fn{font-size:12px;color:var(--text-muted);margin:10px 0 0;max-width:88ch}
+dl#glossarliste{margin:0;display:grid;gap:12px}
+dl#glossarliste dt{font-weight:620;font-size:13.5px}
+dl#glossarliste dd{margin:2px 0 0;font-size:13.5px;color:var(--text-secondary);max-width:88ch}
+
+@media(max-width:860px){.two{grid-template-columns:1fr}.hero{gap:24px}.hero .fig{font-size:40px}}
+@media print{
+  .sticky{position:static}
+  nav.tabs,.theme-btn{display:none}
+  .view[hidden]{display:block !important}
+  .view{break-before:page}
+  .amp>.warum{display:block !important}
+}
+</style>
+</head>
+<body>
+<div id="tip"></div>
+<div class="wrap">
+<header class="top">
+  <div>
+    <h1>Vermögens-Dashboard</h1>
+    <p class="sub">Persönliche Bilanz · Stichtag <b id="stichtag"></b> · Quelle: Portfolio Performance</p>
+  </div>
+  <button class="theme-btn" id="theme">Dunkel</button>
+</header>
+
+<div class="sticky">
+<div class="statusbar" id="statusbar"></div>
+<nav class="tabs" id="tabs" role="tablist">
+  <button role="tab" data-view="ueberblick">Überblick</button>
+  <button role="tab" data-view="immobilien">Immobilien</button>
+  <button role="tab" data-view="depot">Kapitalanlagen</button>
+  <button role="tab" data-view="risiko">Liquidität und Risiko</button>
+  <button role="tab" data-view="steuern">Steuern</button>
+  <button role="tab" data-view="empfehlungen">Empfehlungen</button>
+</nav>
+</div>
+
+<div class="view" id="v-ueberblick">
+
+<div class="hero">
+  <div>
+    <div class="lbl">Nettovermögen</div>
+    <div class="fig" id="heroNet"></div>
+  </div>
+  <div class="deltas">
+    <div class="d"><v id="dMon"></v><s id="dMonL"></s></div>
+    <div class="d"><v id="dYtd"></v><s>seit Jahresbeginn</s></div>
+    <div class="d"><v id="d12"></v><s>letzte 12 Monate</s></div>
+  </div>
+</div>
+
+<div class="tiles" id="tiles"></div>
+
+<section>
+  <h2>Wo stehen wir</h2>
+  <p class="note">Acht Kennzahlen mit einem Zielwert daneben. Die Farbe sagt, ob der Wert im
+     angestrebten Bereich liegt — die Maßstäbe stehen in <code>schwellen.py</code> und lassen
+     sich dort ändern. Ein Klick auf eine Zeile zeigt, wie sie gerechnet ist und warum die
+     Schwelle dort liegt.</p>
+  <div id="ampeln"></div>
+</section>
+
+<section>
+  <h2>Was sich seit dem Vormonat geändert hat</h2>
+  <p class="note" id="vergleichnote"></p>
+  <div class="card"><div class="scroll" id="tvergleich"></div></div>
+</section>
+
+
+
+<section>
+  <h2>Bilanz zum Stichtag</h2>
+  <p class="note">Was da ist, was davon der Bank gehört und was bleibt. Gleiche Aufstellung wie
+     im PDF für die Bank.</p>
+  <div class="two">
+    <div class="card"><div class="bh">Aktiva</div><div class="scroll" id="taktiva"></div></div>
+    <div class="card"><div class="bh">Passiva</div><div class="scroll" id="tpassiva"></div></div>
+  </div>
+  <div class="card netcard" id="netcard"></div>
+</section>
+
+<section>
+  <h2>Entwicklung des Vermögens</h2>
+  <p class="note">Aktiva nach Anlageklasse (oberhalb der Nulllinie) gegen die Immobiliendarlehen
+     (unterhalb). Die Linie ist das Nettovermögen — also das, was nach Abzug aller Schulden bleibt.</p>
+  <div class="card">
+    <div class="legend" id="lg1"></div>
+    <figure><svg id="c1" height="360" role="img" aria-label="Vermögensentwicklung"></svg></figure>
+    <details class="tbl"><summary>Werte als Tabelle</summary><div class="scroll" id="t1"></div></details>
+  </div>
+</section>
+
+<section>
+  <h2>Woher die Veränderung kommt</h2>
+  <p class="note">Jeder Monatsbalken zerlegt die Veränderung des Nettovermögens in vier Quellen.
+     Sparen und Entnahmen sind echte Zahlungen von außen, die übrigen drei entstehen im Bestand.</p>
+  <div class="card">
+    <div class="legend" id="lg2"></div>
+    <figure><svg id="c2" height="300" role="img" aria-label="Zerlegung der Monatsveränderung"></svg></figure>
+    <details class="tbl"><summary>Werte als Tabelle</summary><div class="scroll" id="t2"></div></details>
+  </div>
+  <p class="note" style="margin-top:22px">Über den gesamten Zeitraum seit Ende 2018 setzt sich
+     das heutige Nettovermögen so zusammen. Das laufende Ergebnis ist negativ, weil Modernisierungen
+     als Aufwand gebucht werden und ihre Wertsteigerung erst später als Bewertungssprung erscheint —
+     der größte Teil davon entfällt auf das Eigenheim. Die Empfehlungen rechnen das auf.</p>
+  <div class="tiles" id="herkunft"></div>
+</section>
+
+<section>
+  <h2>Jahresbilanz</h2>
+  <p class="note">Alle Jahre im Vergleich: was von außen kam, was der Bestand erwirtschaftet hat
+     und was am Jahresende stand.</p>
+  <div class="card"><div class="scroll" id="tyear"></div></div>
+  <details class="tbl"><summary>Konten und Salden im Detail</summary>
+    <div class="card"><div class="scroll" id="tacc"></div></div></details>
+</section>
+
+</div>
+
+<div class="view" id="v-immobilien" hidden>
+<section>
+  <h2>Immobilien</h2>
+  <p class="note">Je Objekt der Verkehrswert, aufgeteilt in eigenes Kapital und Restschuld.
+     Die vermieteten Objekte stehen oben, das selbstgenutzte Eigenheim unterhalb der Trennlinie —
+     es geht in keine Renditekennzahl ein. Die Tabelle darunter zeigt die Bewirtschaftung der
+     letzten zwölf Monate. Alle Renditen sind eigene Berechnungen aus den gebuchten Kaltmieten
+     und Kosten, nicht aus Portfolio Performance übernommen — die Methodik steht ganz unten.</p>
+  <div class="tiles" id="immokpi" style="margin-bottom:16px"></div>
+  <div class="card">
+    <div class="legend" id="lg5"></div>
+    <figure><svg id="c5" height="300" role="img" aria-label="Immobilien nach Eigenkapital und Restschuld"></svg></figure>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="scroll" id="tobj"></div></div>
+</section>
+
+<section>
+  <h2>Objektsteckbriefe</h2>
+  <p class="note">Baujahr, Wohnfläche, Mieter und Bodenrichtwert je Objekt — aus den
+     Kaufpreisaufteilungen, Exposés und dem Verkehrswertgutachten, nicht aus Portfolio
+     Performance. Grundlage für die Miete je Quadratmeter und die nach Wohnfläche gerechnete
+     Instandhaltungsrücklage rechts in der Tabelle.</p>
+  <div class="card"><div class="scroll" id="tsteckbrief"></div></div>
+  <p class="fn" id="steckbrieffn"></p>
+</section>
+
+<section>
+  <h2>Einzelnes Objekt</h2>
+  <p class="note">Alles zu einem Objekt auf einer Seite: Kauf, Wertentwicklung, Miete, Kosten,
+     Finanzierung, Steuer und die Rendite über die gesamte Haltedauer.</p>
+  <div class="objpick" id="objpick"></div>
+  <div id="objdetail"></div>
+</section>
+
+<section>
+  <h2>Darlehen im Einzelnen</h2>
+  <p class="note">Jedes Darlehenskonto einzeln statt je Objekt zusammengefasst. Nur so ist
+     sichtbar, welche Tranchen noch aus der Niedrigzinsphase stammen und welche schon zu
+     heutigen Konditionen laufen. Der Zinssatz ist auf die aktuelle Monatsrate hochgerechnet.</p>
+  <div class="card"><div class="scroll" id="tdarlehen"></div></div>
+</section>
+
+<section>
+  <h2>Zinsbindungen und Fälligkeitsleiste</h2>
+  <p class="note">Wann welche Restschuld neu verhandelt werden muss, und was das bei einer um
+     zwei Prozentpunkte teureren Anschlussfinanzierung zusätzlich kosten würde. Ein
+     Stressmaßstab, keine Prognose.</p>
+  <div class="tiles" id="zbkpi" style="margin-bottom:16px"></div>
+  <div class="card"><div class="scroll" id="tfaelligkeit"></div></div>
+</section>
+</div>
+
+<div class="view" id="v-depot" hidden>
+<section>
+  <h2>Kapitalvermögen und Wertentwicklung</h2>
+  <p class="note">Links die Aufteilung des liquiden Kapitalvermögens ohne Immobilien, rechts die
+     zeitgewichtete Wertentwicklung der Wertpapiere — bereinigt um Ein- und Auszahlungen, also die
+     reine Anlageleistung.</p>
+  <div class="two">
+    <div class="card">
+      <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">Aufteilung des Kapitalvermögens</div>
+      <figure><svg id="c3" height="230" role="img" aria-label="Aufteilung des Kapitalvermögens"></svg></figure>
+    </div>
+    <div class="card">
+      <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">Wertentwicklung im Vergleich, Start = 100</div>
+      <div class="legend" id="lg4"></div>
+      <figure><svg id="c4" height="230" role="img" aria-label="Wertentwicklung der Wertpapiere im Vergleich zu MSCI World und DAX"></svg></figure>
+      <div id="bmnote"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="bh">Vergleich mit den Indizes</div>
+    <div class="scroll" id="tbench"></div>
+    <p class="fn" id="bmfn"></p></div>
+  <div class="card" style="margin-top:16px">
+    <div class="scroll" id="tpos"></div>
+  </div>
+</section>
+</div>
+
+<div class="view" id="v-risiko" hidden>
+<section>
+  <h2>Liquiditätsvorschau</h2>
+  <p class="note">Die nächsten zwölf Monate, gerechnet aus den in Portfolio Performance
+     geplanten Buchungen und — wo keine Planung existiert — aus den Daueraufträgen der letzten
+     sechs Monate. Als Dauerauftrag zählt nur, was sich in mindestens vier der sechs Monate
+     wiederholt <em>und</em> dabei der Höhe nach stabil bleibt. Die untere Kante des Bandes
+     unterstellt zusätzlich, dass unregelmäßige Ausgaben im typischen Monatsumfang weitergehen.</p>
+  <p class="note"><b>Was die Vorschau nicht leisten kann:</b> Sie kennt nur, was in Portfolio
+     Performance gebucht ist. Eine laufende Sanierung ist kein Dauerauftrag — ihre noch
+     ausstehenden Rechnungen erscheinen erst, wenn sie dort als geplante Buchung eingetragen
+     sind. Deshalb steht die Kachel „Einmalzahlungen" daneben: sie zeigt, was in den Basismonaten
+     tatsächlich an unregelmäßigen Beträgen abgeflossen ist, ohne das in die Zukunft zu
+     verlängern.</p>
+  <div class="tiles" id="liqkpi" style="margin-bottom:16px"></div>
+  <div class="two">
+    <div class="card">
+      <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">Frei verfügbare Liquidität</div>
+      <figure><svg id="c6" height="240" role="img" aria-label="Vorschau der frei verfügbaren Liquidität"></svg></figure>
+    </div>
+    <div class="card">
+      <div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">Guthaben auf den Objektkonten</div>
+      <figure><svg id="c6b" height="240" role="img" aria-label="Vorschau der Objektkonten"></svg></figure>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="legend" id="lg6"></div>
+    <details class="tbl" open><summary>Werte als Tabelle</summary><div class="scroll" id="t6"></div></details>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="scroll" id="twarn"></div></div>
+</section>
+
+<section>
+  <h2>Stresstest</h2>
+  <p class="note">Was passiert, wenn es schlechter läuft. Jedes Szenario einzeln, unten alle
+     zusammen. Die Bilanz und der laufende Cashflow reagieren dabei sehr unterschiedlich.</p>
+  <div class="card">
+    <div class="legend" id="lg7"></div>
+    <figure><svg id="c7" height="280" role="img" aria-label="Nettovermögen je Stressszenario"></svg></figure>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="scroll" id="tstress"></div></div>
+  <div class="card" style="margin-top:16px"><div class="scroll" id="tpuffer"></div></div>
+</section>
+</div>
+
+<div class="view" id="v-steuern" hidden>
+<section>
+  <h2>Steuerliche Sicht</h2>
+  <p class="note">Was nach Steuern übrig bleibt. Grundlage sind die Abschreibungsbeträge aus
+     deiner letzten Einkommensteuererklärung und der in der Konfiguration hinterlegte
+     Grenzsteuersatz. Die AfA ist Aufwand ohne Zahlung — deshalb ist das steuerliche
+     Ergebnis eine andere Zahl als der Cashflow. Keine Steuerberatung.</p>
+  <div class="tiles" id="steuerkpi" style="margin-bottom:16px"></div>
+  <div class="card"><div class="scroll" id="tsteuer"></div></div>
+  <div class="two" style="margin-top:16px">
+    <div class="card"><div class="bh">Überleitung zum Cashflow</div>
+      <div class="scroll" id="tueberleit"></div></div>
+    <div class="card"><div class="bh">Abgleich mit der Erklärung</div>
+      <div class="scroll" id="tabgleich"></div></div>
+  </div>
+  <div class="card" style="margin-top:16px"><div class="bh">Steuerentwicklung über die Jahre</div>
+    <div class="scroll" id="tsteuerhist"></div>
+    <p class="fn">Frühere Jahre nach den jeweiligen Steuerbescheiden, das letzte Jahr nach der
+       eingereichten, noch nicht beschiedenen Erklärung (siehe <code>historie</code> in der
+       Konfiguration). Das zu versteuernde Einkommen schwankt vor allem mit dem
+       Bruttoarbeitslohn, nicht mit den Immobilien.</p></div>
+</section>
+</div>
+
+<div class="view" id="v-empfehlungen" hidden>
+<section>
+  <h2>Handlungsempfehlungen</h2>
+  <p class="note">Abgeleitet aus den Zahlen dieses Stichtags. Keine Anlage-, Steuer- oder
+     Rechtsberatung — eine Diskussionsgrundlage für dein Monatsupdate.</p>
+  <div id="empf"><!--__EMPF__--></div>
+</section>
+</div>
+
+<section id="wegweiser">
+  <h2>Wegweiser</h2>
+  <p class="note">Wer was liest, und in welcher Reihenfolge.</p>
+  <div class="tiles" id="lesepfade"></div>
+  <details class="tbl" id="glossar" style="margin-top:18px">
+    <summary>Glossar — was die Begriffe bedeuten</summary>
+    <div class="card"><dl id="glossarliste"></dl></div>
+  </details>
+</section>
+
+<footer id="foot"></footer>
+</div>
+<script>
+const DATA = /*__DATA__*/null;
+</script>
+<script>
+/*__JS__*/
+</script>
+</body>
+</html>

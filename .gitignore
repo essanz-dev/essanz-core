@@ -1,0 +1,25 @@
+# Eigene Konfiguration — enthält reale Adressen, Darlehensdaten, Steuerwerte.
+# NIEMALS committen. config.example.yaml (die fiktive Beispiel-Config) bleibt im Repo.
+config.yaml
+
+# Eigene Portfolio-Performance-Exportdatei. beispiel.portfolio (fiktiv) bleibt im Repo.
+*.portfolio
+!beispiel.portfolio
+
+# Generierte Ausgaben (Dashboards, JSON) — enthalten reale Zahlen, wenn mit echter
+# config.yaml erzeugt.
+ausgabe/
+ausgabe_*/
+out/
+data.json
+daten.json
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Editor/OS
+.DS_Store
+*.swp
