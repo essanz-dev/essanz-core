@@ -303,7 +303,55 @@ function zeigeFehler(r, dateiname) {
   el.innerHTML = `<section class="karte"><h2>${esc(dateiname)}</h2>
     <div class="meldung Fehler"><b>Fehler</b>${esc(r.fehler)}</div>
     ${r.details ? `<details class="technik"><summary>Technische Details (für ein Issue, ohne Kontonamen)</summary><pre>${esc(r.details)}</pre></details>` : ''}
+  </section>` + rueckmeldungKarte({ fehler: r.fehler, details: r.details });
+  rueckmeldungVerdrahten();
+}
+
+// Rueckmeldung ohne Tracking: ein vorausgefuelltes GitHub-Issue oder Text zum Kopieren. Enthaelt nur
+// technische Angaben (Anzahlen, Hinweisarten, Fehlerart), keine Konto- oder Objektnamen, keine Betraege.
+const ISSUES_NEU = 'https://github.com/essanz-dev/essanz-core/issues/new';
+const IMPRESSUM = 'https://essanz-dev.github.io/essanz-app/impressum.html';
+let rueckmeldungText = '';
+
+const ohneNamen = (t) => String(t || '').replace(/'[^']*'|„[^“]*“|"[^"]*"/g, '…');
+
+function rueckmeldungKarte(k) {
+  const z = [
+    '**Was ist passiert, was hast du erwartet?**', '', '(bitte hier beschreiben)', '',
+    '---', 'Technische Angaben (automatisch, ohne Namen und Beträge):',
+    `- Essanz-Prototyp, ${$('technik').textContent}`,
+  ];
+  if (k.bericht) {
+    const b = k.bericht;
+    const n = (st) => b.hinweise.filter((h) => h.stufe === st).length;
+    z.push(`- ${b.buchungen} Buchungen, ${b.konten.length} Konten, ${b.depots.length} Depots, ${b.objekte.length} Immobilien erkannt`,
+           `- Hinweise: ${n('Fehler')} Fehler, ${n('Warnung')} Warnungen, ${n('Info')} Infos`,
+           `- Konfiguration: ${b.beispiel_config ? 'Beispiel' : 'eigene'}`);
+    for (const h of b.hinweise.filter((x) => x.stufe !== 'Info')) z.push(`  - ${h.stufe}: ${ohneNamen(h.text).slice(0, 160)}`);
+  }
+  if (k.fehler) z.push(`- Fehler: ${ohneNamen(k.fehler).slice(0, 300)}`);
+  if (k.details) z.push('', '```', ohneNamen(k.details).split('\n').slice(-12).join('\n'), '```');
+  rueckmeldungText = z.join('\n');
+  return `<section class="karte" id="rueckmeldung"><h2>Rückmeldung</h2>
+    <p>Hat etwas nicht gepasst oder gefehlt? Jede Rückmeldung hilft. Deine Datei schickst du dabei nicht mit.</p>
+    <div class="reihe">
+      <button type="button" class="knopf" id="rm-github">Auf GitHub melden</button>
+      <button type="button" class="knopf" id="rm-kopieren">Text kopieren</button>
+      <a href="${IMPRESSUM}" target="_blank" rel="noopener">Ohne GitHub-Konto: Kontakt laut Impressum</a>
+    </div>
+    <details class="mehr"><summary>Was mitgeschickt wird</summary><pre>${esc(rueckmeldungText)}</pre></details>
   </section>`;
+}
+
+function rueckmeldungVerdrahten() {
+  $('rm-github')?.addEventListener('click', () => {
+    const url = `${ISSUES_NEU}?title=${encodeURIComponent('Rückmeldung zur Browser-App')}&body=${encodeURIComponent(rueckmeldungText)}`;
+    window.open(url, '_blank', 'noopener');
+  });
+  $('rm-kopieren')?.addEventListener('click', async (ev) => {
+    try { await navigator.clipboard.writeText(rueckmeldungText); ev.target.textContent = 'Kopiert'; }
+    catch { ev.target.textContent = 'Bitte unten markieren'; }
+  });
 }
 
 function gruppe(g) {
@@ -332,7 +380,8 @@ function zeige(b, dateiname) {
         <dt>Wertpapier</dt><dd>${feld(o.wertpapier)}</dd>
         <dt>Darlehen</dt><dd>${o.darlehen.length ? o.darlehen.map(esc).join(', ') : '<span class="leise">keins</span>'}</dd>
         <dt>Erkannt</dt><dd class="leise">${esc(o.grund)}</dd></dl></div>`).join('')}</div>`
-    : '<p class="fehlt">Keine Immobilie erkannt.</p>';
+    : '<p class="fehlt">Keine Immobilie erkannt. Ordne sie über „Zuordnung bearbeiten“ zu, oder lies, ' +
+      '<a href="#anleitung" id="zur-anleitung">wie Essanz Immobilien in Portfolio Performance erwartet</a>.</p>';
 
   const summen = b.summen.map((s) => `<div class="summe${s.name === 'Nettovermögen' ? ' netto' : ''}">
       <span>${esc(s.name)}</span><strong>${eur(s.wert)}</strong></div>`).join('');
@@ -375,9 +424,11 @@ function zeige(b, dateiname) {
       </div>
       <p id="dash-status" class="status"></p>
       <iframe id="dash-rahmen" title="Dashboard" hidden></iframe>
-    </section>`;
+    </section>` + rueckmeldungKarte({ bericht: b });
+  rueckmeldungVerdrahten();
   $('speichern').addEventListener('click', speichern);
   $('formular-auf').addEventListener('click', formularOeffnen);
+  $('zur-anleitung')?.addEventListener('click', () => { $('anleitung').querySelector('details').open = true; });
   $('anonym').addEventListener('change', dashboardBauen);
 
   const k = $('kopieren');
@@ -394,12 +445,72 @@ function zeige(b, dateiname) {
   el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+// Mit Passwort gespeicherte Dateien (in Portfolio Performance der Vorschlag fuer neue Dateien):
+// 'PORTFOLIO', 1 Byte Verfahren (0 = AES-128, 1 = AES-256), 16 Byte IV, dann AES-CBC. Schluessel
+// per PBKDF2-HMAC-SHA1 mit festem Salt und 65536 Runden (wie ClientFactory.Decryptor in PP).
+// Entschluesselt wird hier im Browser mit Web Crypto; das Passwort wird nirgends gespeichert.
+const PP_SIGNATUR = [80, 79, 82, 84, 70, 79, 76, 73, 79]; // "PORTFOLIO"
+const PP_SALT = new Uint8Array([112, 67, 103, 107, 164, 131, 144, 161, 159, 142, 117, 200, 203, 187, 231, 228]);
+
+const istVerschluesselt = (b) => b.length > 26 && PP_SIGNATUR.every((x, i) => b[i] === x);
+
+async function entschluesseln(bytes, passwort) {
+  const laenge = bytes[9] === 1 ? 256 : 128;
+  const iv = bytes.slice(10, 26);
+  const basis = await crypto.subtle.importKey('raw', new TextEncoder().encode(passwort), 'PBKDF2', false, ['deriveKey']);
+  const schluessel = await crypto.subtle.deriveKey(
+    { name: 'PBKDF2', salt: PP_SALT, iterations: 65536, hash: 'SHA-1' },
+    basis, { name: 'AES-CBC', length: laenge }, false, ['decrypt']);
+  let klar;
+  try {
+    klar = new Uint8Array(await crypto.subtle.decrypt({ name: 'AES-CBC', iv }, schluessel, bytes.slice(26)));
+  } catch {
+    return null; // falsches Passwort zeigt sich meist als ungueltiges Padding
+  }
+  const ansicht = new DataView(klar.buffer);
+  const typ = ansicht.getInt32(0), version = ansicht.getInt32(4);
+  if (typ < 1 || typ > 2 || version < 1 || version > 200) return null;
+  // Typ 1 = XML, 2 = Binaerformat; beides steckt in einem ZIP, das ppparse.py liest.
+  return klar.slice(8);
+}
+
+function passwortAbfragen(dateiname) {
+  return new Promise((fertig) => {
+    const el = $('ergebnis');
+    el.hidden = false;
+    el.innerHTML = `<section class="karte"><h2>${esc(dateiname)}</h2>
+      <p>Die Datei ist mit einem Passwort geschützt. Es wird nur hier im Browser zum Entschlüsseln
+        benutzt und weder gespeichert noch gesendet.</p>
+      <form id="pw-form" class="reihe">
+        <input type="password" id="pw" autocomplete="current-password" placeholder="Passwort aus Portfolio Performance" class="eingabe">
+        <button type="submit" class="knopf haupt">Öffnen</button>
+        <button type="button" class="knopf leise-knopf" id="pw-weg">Abbrechen</button>
+      </form><p id="pw-status" class="status"></p></section>`;
+    $('pw').focus();
+    $('pw-form').addEventListener('submit', (ev) => { ev.preventDefault(); fertig($('pw').value); });
+    $('pw-weg').addEventListener('click', () => { el.hidden = true; el.innerHTML = ''; fertig(null); });
+  });
+}
+
+async function dateiOeffnen(bytes, name) {
+  if (!istVerschluesselt(bytes)) return pruefen(bytes, name);
+  for (;;) {
+    const pw = await passwortAbfragen(name);
+    if (pw === null) { status('Abgebrochen.'); return; }
+    status('Entschlüssele …');
+    const klar = await entschluesseln(bytes, pw);
+    if (klar) return pruefen(klar, name);
+    status('Das Passwort passt nicht. Bitte noch einmal.', true);
+  }
+}
+
 $('datei').addEventListener('change', async (ev) => {
   const f = ev.target.files[0];
   if (!f) return;
   status(`Lese ${f.name} …`);
-  pruefen(new Uint8Array(await f.arrayBuffer()), f.name);
+  const bytes = new Uint8Array(await f.arrayBuffer());
   ev.target.value = '';
+  await dateiOeffnen(bytes, f.name);
 });
 
 $('demo').addEventListener('click', () => {

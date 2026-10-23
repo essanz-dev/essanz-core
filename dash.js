@@ -497,7 +497,7 @@ function immokpi(){
   const k=DATA.kpi;
   const T=[
     ['Kapitalanlagen',eur(k.inv_val),k.n_inv+' Objekte · '+eur(k.inv_debt)+' Restschuld'],
-    ['Bruttomietrendite',pct(k.mietrendite,2),'Kaltmiete '+eur(k.inv_rent)+' im Jahr'],
+    ['Bruttomietrendite',pct(k.mietrendite,2),'Kaltmiete '+eur(k.inv_rent_run)+' im Jahr (Run-Rate)'],
     ['Nettomietrendite',pct(k.nettomietrendite,2),'nach Nebenkosten und Bewirtschaftung'],
     ['Sollzins im Schnitt',pct(k.inv_zinssatz,2),'Abstand zur Nettorendite '+pct(k.nettomietrendite-k.inv_zinssatz,2)],
     ['Cashflow nach Kapitaldienst',eur(k.inv_cf),'Annuität '+eur(k.inv_ann)+' im Jahr'],
@@ -737,14 +737,17 @@ function tables(){
     'Performance gebuchten Vorgängen. Aus Portfolio Performance übernommen sind nur die Rohdaten: '+
     'Buchungen, Wertpapierkurse und die von dir gepflegten Verkehrswerte. Keine der Renditen unten '+
     'stammt aus der Software.<br><br>'+
-    '<b>Bruttomietrendite</b> = Kaltmiete der letzten zwölf Monate geteilt durch den Verkehrswert '+
-    'der vermieteten Objekte. Die Kaltmiete ist die Summe der Buchungen, die du als Dividende auf '+
-    'das jeweilige Immobilien-Wertpapier gebucht hast: '+eur(k.inv_rent)+' ÷ '+eur(k.inv_val)+
-    ' = '+pct(k.mietrendite,2)+'. Das selbstgenutzte Objekt ist in Zähler und Nenner nicht enthalten.<br>'+
-    '<b>Nettomietrendite</b> = (Kaltmiete + Nebenkostenvorauszahlungen der Mieter − sämtliche '+
-    'Bewirtschaftungskosten) ÷ Verkehrswert = ('+eur(k.inv_rent)+' + '+eur(k.inv_nk)+' − '+
-    eur(k.inv_cost)+') ÷ '+eur(k.inv_val)+' = '+pct(k.nettomietrendite,2)+'. Sie ist vor Zinsen, '+
-    'vor Tilgung und vor Steuern.<br>'+
+    '<b>Bruttomietrendite</b> = aktuelle Kaltmiete, hochgerechnet auf zwölf Monate (Run-Rate: '+
+    'letzte gebuchte Monatsmiete × 12), geteilt durch den Verkehrswert der vermieteten Objekte. '+
+    'Die Kaltmiete ist die Buchung, die du als Dividende auf das jeweilige Immobilien-Wertpapier '+
+    'gebucht hast: '+eur(k.inv_rent_run)+' ÷ '+eur(k.inv_val)+' = '+pct(k.mietrendite,2)+
+    '. Das selbstgenutzte Objekt ist in Zähler und Nenner nicht enthalten. Mieterhöhungen und '+
+    'Neuvermietungen im Jahresverlauf zählen so sofort voll, statt erst über zwölf Monate '+
+    'hineinzuwachsen (dieselbe Logik wie bei der Kapitaldienstdeckung).<br>'+
+    '<b>Nettomietrendite</b> = (Kaltmiete-Run-Rate + Nebenkosten-Run-Rate − sämtliche tatsächlichen '+
+    'Bewirtschaftungskosten der letzten zwölf Monate) ÷ Verkehrswert = ('+eur(k.inv_rent_run)+' + '+
+    eur(k.inv_nk_run)+' − '+eur(k.inv_cost)+') ÷ '+eur(k.inv_val)+' = '+pct(k.nettomietrendite,2)+
+    '. Sie ist vor Zinsen, vor Tilgung und vor Steuern.<br>'+
     '<b>Eigenkapitalrendite auf heutiges Eigenkapital</b> = Überschuss nach Zinsen ÷ '+
     '(Verkehrswert − Restschuld) = '+eur(k.inv_ueberschuss)+' ÷ '+eur(k.inv_equity)+' = '+
     pct(k.eigenkapitalrendite,1)+'. Der Nenner ist der heutige Marktwert deines Anteils, nicht das, '+

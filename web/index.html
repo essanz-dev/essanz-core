@@ -23,7 +23,7 @@
 
     <div class="reihe">
       <label class="datei">
-        <input type="file" id="datei" accept=".portfolio" disabled>
+        <input type="file" id="datei" accept=".portfolio,.xml,.zip" disabled>
         <span class="knopf haupt">.portfolio-Datei wählen</span>
       </label>
       <button type="button" class="knopf" id="demo" disabled>Beispieldatei ansehen</button>
@@ -44,6 +44,43 @@
     </details>
 
     <p id="status" class="status" role="status">Python wird geladen …</p>
+  </section>
+
+  <section class="karte anleitung" id="anleitung">
+    <details>
+      <summary><h2>So bildest du Immobilien und Darlehen in Portfolio Performance ab</h2></summary>
+      <p>Essanz rechnet nur mit dem, was in deiner Datei gebucht ist. Für jede Immobilie braucht es
+        ein Wertpapier, ein Objektkonto und meist ein Darlehenskonto, dazu einmal ein Depot für alle Immobilien.
+        Wie sie heißen, ist egal: Die Zuordnung kannst du hier im Formular „Zuordnung bearbeiten“ festlegen.</p>
+      <ol>
+        <li><b>Ein Depot für Immobilien</b>, z. B. „Immobilien“, getrennt von deinem Wertpapierdepot.</li>
+        <li><b>Je Immobilie ein Wertpapier</b> ohne ISIN, z. B. „Wohnung Musterstraße 5“, in Euro. Den
+          Verkehrswert trägst du als Kurs ein (bei den historischen Kursen des Wertpapiers) und aktualisierst ihn,
+          wenn du neu schätzt. Gekauft wird es einmal mit Stückzahl 1 zum Kaufpreis samt Nebenkosten,
+          bezahlt vom Objektkonto.</li>
+        <li><b>Je Immobilie ein Objektkonto</b> (ein Konto in Portfolio Performance), auf dem alles läuft:
+          <ul>
+            <li>Kaltmiete als <b>Dividende</b> auf das Immobilien-Wertpapier,</li>
+            <li>Nebenkostenvorauszahlungen der Mieter als <b>Einlage</b> (Einlagen ab 20.000 € zählen
+              als eingebrachtes Eigenkapital),</li>
+            <li>Hausgeld, Reparaturen, Versicherung als <b>Entnahme</b> (ab 3.000 € oder mit einem Wort wie
+              „Dach“ oder „Heizung“ in der Notiz zählt eine Entnahme als Modernisierung),</li>
+            <li>Grundsteuer als <b>Steuer</b>, Bankgebühren als <b>Gebühren</b>.</li>
+          </ul></li>
+        <li><b>Je Darlehen ein eigenes Konto</b>, das ins Minus läuft:
+          <ul>
+            <li>Auszahlung als <b>Umbuchung</b> vom Darlehenskonto auf das Objektkonto,</li>
+            <li>monatliche Rate als <b>Umbuchung</b> vom Objektkonto auf das Darlehenskonto,</li>
+            <li>der Zinsanteil der Rate als <b>Zinsbelastung</b> auf dem Darlehenskonto.</li>
+          </ul>
+          So ergibt sich die Restschuld von selbst, und Essanz trennt Zins und Tilgung.</li>
+      </ol>
+      <p class="leise">Selbst bewohnte Immobilien bildest du genauso ab, nur ohne Mietbuchungen, und setzt im
+        Formular den Haken „selbst bewohnt“. Zinsbindung und Sollzins stehen nicht in Portfolio Performance;
+        die trägst du im Formular ein.</p>
+      <p class="leise">Wer die Namen „Immobilie 1: Musterstraße 5“ (Konto und Wertpapier), „Darlehenskonto 1“ und
+        ein Depot, das mit „Immo“ beginnt, verwendet, braucht gar keine Zuordnung. So ist die Beispieldatei aufgebaut.</p>
+    </details>
   </section>
 
   <section id="ergebnis" hidden></section>

@@ -109,8 +109,9 @@ def months_between(d0, d1):
     return out
 
 
-def build(umbenennen=None):
-    """umbenennen: {alter Name: neuer Name} fuer Konten, Depots, Wertpapiere (Tests fremder Kontennamen)."""
+def build(umbenennen=None, mieterhoehung=None):
+    """umbenennen: {alter Name: neuer Name} fuer Konten, Depots, Wertpapiere (Tests fremder Kontennamen).
+    mieterhoehung: {Objektnummer: (ab Datum, neue Kaltmiete)} (Test der Miet-Run-Rate)."""
     N = lambda name: (umbenennen or {}).get(name, name)
     top = []
     START = datetime.date(2024, 9, 1)
@@ -196,7 +197,8 @@ def build(umbenennen=None):
             d = m
             if not o['selbst']:
                 T(ttype='DIVIDEND', date=d, account=o['immo'], security=o['sec'],
-                  amount=o['miete'], note='Kaltmiete')
+                  amount=(mieterhoehung[o['no']][1] if mieterhoehung and o['no'] in mieterhoehung
+                          and d >= mieterhoehung[o['no']][0] else o['miete']), note='Kaltmiete')
                 T(ttype='DEPOSIT', date=d, account=o['immo'], amount=o['nk'],
                   note='Nebenkostenvorauszahlung')
             T(ttype='REMOVAL', date=d, account=o['immo'], amount=o['kosten'],

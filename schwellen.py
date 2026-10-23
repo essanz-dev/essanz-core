@@ -206,15 +206,16 @@ def _z(label, wert, fmt, art=''):
 
 HERLEITUNG = {
     'dscr': lambda k, v: [
-        _z('Kaltmiete der vermieteten Objekte', k['inv_rent'], 'eur'),
-        _z('zuzüglich umgelegte Nebenkosten', k['inv_nk'], 'eur'),
-        _z('abzüglich Bewirtschaftungskosten', -k['inv_cost'], 'eur'),
-        _z('Nettomieteinnahmen', k['inv_noi'], 'eur', 'summe'),
-        _z('geteilt durch Kapitaldienst der vermieteten Objekte', k['inv_ann'], 'eur'),
+        _z('Kaltmiete der vermieteten Objekte (aktueller Monat × 12)', k['inv_rent_run'], 'eur'),
+        _z('zuzüglich umgelegte Nebenkosten (aktueller Monat × 12)', k['inv_nk_run'], 'eur'),
+        _z('abzüglich Bewirtschaftungskosten (letzte 12 Monate)', -k['inv_cost'], 'eur'),
+        _z('Nettomieteinnahmen', k['inv_rent_run'] + k['inv_nk_run'] - k['inv_cost'], 'eur', 'summe'),
+        _z('geteilt durch Kapitaldienst der vermieteten Objekte (letzte 12 Monate)', k['inv_ann'], 'eur'),
         _z('Kapitaldienstdeckung', k['dscr'], 'x', 'ergebnis'),
         _z('darin Zinsanteil', k['inv_int'], 'eur', 'info'),
         _z('darin Tilgungsanteil', k['inv_red'], 'eur', 'info'),
-        _z('Überschuss nach Kapitaldienst', k['inv_cf'], 'eur', 'info'),
+        _z('Überschuss nach Kapitaldienst (mit hochgerechneter Kaltmiete/Nebenkosten)',
+           k['inv_rent_run'] + k['inv_nk_run'] - k['inv_cost'] - k['inv_ann'], 'eur', 'info'),
     ],
     'eigenkapitalquote': lambda k, v: [
         _z('Vermögen', k['assets'], 'eur'),
@@ -274,8 +275,11 @@ HERLEITUNG = {
 }
 
 QUELLEN = {
-    'dscr': 'Alle Beträge aus den Buchungen der letzten zwölf Monate, nur die vermieteten '
-            'Objekte. Kaltmiete sind die Mietbuchungen auf die Immobilien-Wertpapiere, der '
+    'dscr': 'Nur die vermieteten Objekte. Kaltmiete und umgelegte Nebenkosten sind eine '
+            'Run-Rate: die zuletzt gebuchte Monatszahlung je Objekt mal zwölf, nicht die Summe '
+            'der letzten zwölf Buchungen. Mieterhöhungen und neu vermietete Einheiten zählen so '
+            'sofort voll. Bewirtschaftungskosten und Kapitaldienst sind die tatsächlichen '
+            'Buchungen der letzten zwölf Monate. Kaltmiete sind die Mietbuchungen auf die Immobilien-Wertpapiere, der '
             'Kapitaldienst die Überweisungen auf die Darlehenskonten. Nachzulesen im Reiter '
             'Immobilien, Spalten Kaltmiete und Kapitaldienst.',
     'eigenkapitalquote': 'Stichtagswerte aus der Bilanz im Reiter Überblick.',

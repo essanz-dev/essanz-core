@@ -499,18 +499,36 @@ def build(path, asof=None, mit_vergleich=True, book=None):
         selbst = no in SELBSTGENUTZT
         tilg12 = t12 - i12
         noi12 = r12 + nk12 - c12
+        # Run-Rate: letzte gebuchte Kaltmiete bzw. umgelegte Nebenkosten mal zwoelf, statt der
+        # Summe der letzten zwoelf Buchungen. So zaehlen Mieterhoehungen und Neuvermietungen
+        # sofort voll, nicht erst nach einem Jahr. Selbstgenutzte Objekte haben keine aktuelle
+        # Miete (sonst wuerde eine alte Mietbuchung aus der Zeit vor dem Einzug hochgerechnet).
+        # Bewirtschaftungskosten und Kapitaldienst bleiben die tatsaechlichen 12-Monats-Buchungen.
+        r_run = nk_run = 0.0
+        if not selbst:
+            last_rent = max((t for t in b.tx if t['type'] == 'DIVIDEND' and t['security'] == o['sec']
+                             and t['date'] <= b.asof), key=lambda t: t['date'], default=None)
+            if last_rent is not None:
+                r_run = last_rent['amount'] * 12
+            last_nk = max((t for t in b.tx if t['type'] == 'DEPOSIT' and t['account'] == o['account']
+                           and t['date'] <= b.asof
+                           and not (any(w in (t['note'] or '').lower() for w in Book.CAPITAL_WORDS) or t['amount'] >= 20000)),
+                          key=lambda t: t['date'], default=None)
+            if last_nk is not None:
+                nk_run = last_nk['amount'] * 12
+        noi_run = r_run + nk_run - c12
         objs.append(dict(no=int(no), name=o['name'], selbstgenutzt=selbst,
                          nutzung='Eigennutzung' if selbst else 'Kapitalanlage',
                          capex_total=cap_total, value=val, loan=loan, equity=val - loan,
                          ltv=loan / val * 100 if val else None, opaccount=opacc,
                          rent12=r12, nk12=nk12, cost12=c12, capex12=cap12,
-                         interest12=i12, interest_runrate=i_run,
+                         interest12=i12, interest_runrate=i_run, rent_runrate=r_run, nk_runrate=nk_run,
                          annuitaet12=t12, redemption12=tilg12,
                          noi12=noi12,
                          cashflow12=noi12 - t12,
                          ueberschuss12=noi12 - i12,
-                         net_yield=None if selbst else (noi12 / val * 100 if val else None),
-                         gross_yield=None if selbst else (r12 / val * 100 if val else None),
+                         net_yield=None if selbst else (noi_run / val * 100 if val else None),
+                         gross_yield=None if selbst else (r_run / val * 100 if val else None),
                          zinssatz=i12 / loan * 100 if loan else None,
                          tilgungssatz=tilg12 / loan * 100 if loan else None,
                          kaufpreis=kaufpreis, kaufdatum=kaufdatum, darlehensauszahlung=ausz,
@@ -535,7 +553,7 @@ def build(path, asof=None, mit_vergleich=True, book=None):
         o['bodenrichtwert_datum'] = stamm.get('bodenrichtwertdatum')
         o['bodenrichtwert_hinweis'] = stamm.get('bodenrichtwert_hinweis')
         o['stamm_quelle'] = stamm.get('quelle')
-        o['miete_pro_m2_kalt'] = (o['rent12'] / 12 / wfl) if (wfl and not o['selbstgenutzt']) else None
+        o['miete_pro_m2_kalt'] = (o['rent_runrate'] / 12 / wfl) if (wfl and not o['selbstgenutzt']) else None
 
         if wfl:
             faktor = (RUECKLAGE_EUR_M2_MONAT_ALTBAU if (o['baujahr'] or 0) < 1948
@@ -788,6 +806,8 @@ def build(path, asof=None, mit_vergleich=True, book=None):
     inv_rent = sum(o['rent12'] for o in inv); inv_cost = sum(o['cost12'] for o in inv)
     inv_int = sum(o['interest12'] for o in inv); inv_red = sum(o['redemption12'] for o in inv)
     inv_nk = sum(o['nk12'] for o in inv)
+    inv_rent_run = sum(o['rent_runrate'] for o in inv)
+    inv_nk_run = sum(o['nk_runrate'] for o in inv)
     inv_ann = sum(o['annuitaet12'] for o in inv)
     inv_ek0 = sum(o['ek_einsatz'] for o in inv)
     inv_kp = sum(o['kaufpreis'] for o in inv)
@@ -837,8 +857,9 @@ def build(path, asof=None, mit_vergleich=True, book=None):
         neu_darlehen12=s12('darlehensauszahlung'),
         zinssatz=s12('zins_darlehen') / immo_debt * 100 if immo_debt else 0,
         tilgungssatz=s12('tilgung') / immo_debt * 100 if immo_debt else 0,
-        mietrendite=inv_rent / inv_val * 100 if inv_val else 0,
-        nettomietrendite=(inv_rent + inv_nk - inv_cost) / inv_val * 100 if inv_val else 0,
+        # Mietrenditen und Kapitaldienstdeckung mit Kaltmiete/Nebenkosten als Run-Rate (s. objs).
+        mietrendite=inv_rent_run / inv_val * 100 if inv_val else 0,
+        nettomietrendite=(inv_rent_run + inv_nk_run - inv_cost) / inv_val * 100 if inv_val else 0,
         inv_zinssatz=inv_int / inv_debt * 100 if inv_debt else 0,
         inv_tilgungssatz=inv_red / inv_debt * 100 if inv_debt else 0,
         inv_noi=inv_rent + inv_nk - inv_cost,
@@ -854,8 +875,9 @@ def build(path, asof=None, mit_vergleich=True, book=None):
         inv_rent=inv_rent, inv_cost=inv_cost, inv_int=inv_int, inv_red=inv_red, inv_nk=inv_nk,
         inv_ann=inv_ann,
         inv_cf=inv_rent + inv_nk - inv_cost - inv_ann,
-        dscr=(inv_rent + inv_nk - inv_cost) / inv_ann if inv_ann else None,
-        dscr_gesamt=((inv_rent + inv_nk - inv_cost) / s12('annuitaet')
+        inv_rent_run=inv_rent_run, inv_nk_run=inv_nk_run,
+        dscr=(inv_rent_run + inv_nk_run - inv_cost) / inv_ann if inv_ann else None,
+        dscr_gesamt=((inv_rent_run + inv_nk_run - inv_cost) / s12('annuitaet')
                      if s12('annuitaet') else None),
         n_inv=len(inv), n_eig=len(eig),
         eig_val=eig_val, eig_debt=eig_debt, eig_equity=eig_val - eig_debt,

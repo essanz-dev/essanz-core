@@ -138,6 +138,14 @@ details.technik summary { cursor: pointer; color: var(--leise); }
 .schalter { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .karte a { color: var(--akzent); }
 
+input.eingabe { font: inherit; padding: 8px 10px; border: 1px solid var(--linie); border-radius: 8px;
+  background: var(--flaeche); color: var(--text); min-width: 260px; flex: 1 1 260px; }
+
+.anleitung summary { cursor: pointer; list-style-position: outside; }
+.anleitung summary h2 { display: inline; font-size: 1.05rem; }
+.anleitung ol, .anleitung ul { padding-left: 1.3em; }
+.anleitung li { margin: 4px 0; }
+
 /* Formular */
 #formular h3.abschnitt { margin: 22px 0 8px; font-size: 1rem; }
 .objekt-form { border: 1px solid var(--linie); border-radius: 8px; padding: 10px 14px 12px; margin: 0 0 12px; }

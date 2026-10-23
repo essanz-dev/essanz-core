@@ -89,7 +89,11 @@ def verkehrswert_herleitung():
 # ---------------------------------------------------------------------------
 # Steuerdaten (frueher steuer.py)
 def steuer():
-    s = load().get('steuer', {})
+    s = load().get('steuer') or {}
+    for no, e in (s.get('afa') or {}).items():
+        if not isinstance(e, dict):
+            raise ConfigFehler(f"steuer.afa: Eintrag für Objekt {no} muss die Felder satz, betrag "
+                               "und eigentum haben, z. B. {satz: 2.0, betrag: 1500, eigentum: \"Alleineigentum\"}.")
     return dict(
         grenzsteuersatz=s.get('grenzsteuersatz', 0.0),
         durchschnittsatz=s.get('durchschnittsatz', 0.0),

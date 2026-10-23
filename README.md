@@ -85,7 +85,11 @@ zeigt erst die Diagnose (wie `--diagnose`) und darunter das volle Dashboard, das
 HTML-Datei speichern lässt, auf Wunsch anonymisiert. Folgt die Datei nicht der
 Namenskonvention, ordnet man im Formular „Zuordnung bearbeiten“ jeder Immobilie Konto,
 Wertpapier und Darlehen zu und trägt Zinsbindungen ein; daraus entsteht eine `config.yaml`
-zum Herunterladen (oder, nur auf ausdrücklichen Wunsch, im Browser gemerkt). Das Dashboard läuft in einem eigenen
+zum Herunterladen (oder, nur auf ausdrücklichen Wunsch, im Browser gemerkt). Mit Passwort
+gespeicherte Dateien (in Portfolio Performance der Vorschlag für neue Dateien) entschlüsselt die
+Seite lokal per Web Crypto; das Passwort wird nicht gespeichert. Eine Kurzanleitung erklärt, wie
+Immobilien und Darlehen in Portfolio Performance gebucht sein müssen, und eine Rückmeldung lässt
+sich als GitHub-Issue ohne Namen und Beträge vorbereiten. Das Dashboard läuft in einem eigenen
 Rahmen (`dashboard.html`), dessen Content Security Policy jede Netzwerkverbindung sperrt.
 
 ```bash

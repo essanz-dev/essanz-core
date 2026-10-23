@@ -6,8 +6,8 @@ class FormatFehler(ValueError):
     """Die Datei laesst sich nicht lesen; die Meldung ist fuer Nutzer:innen gedacht."""
 
 
-SPEICHERN_HINWEIS = ('In Portfolio Performance die Datei über „Datei → Speichern unter …“ im Format '
-                     '„Binär“ ohne Passwort speichern und diese Kopie an Essanz geben.')
+SPEICHERN_HINWEIS = ('In Portfolio Performance über „Datei → Speichern unter …“ eine Kopie im Format '
+                     '„Binär“ anlegen und diese an Essanz geben.')
 
 def _rv(b, i):
     r = 0; s = 0
@@ -85,8 +85,10 @@ def load(path):
     raw = _lesen(path)
     kopf = raw[:64].lstrip()
     if raw[:9] == b'PORTFOLIO':
-        raise FormatFehler('Die Datei ist mit einem Passwort verschlüsselt. Essanz liest nur '
-                           'unverschlüsselte Dateien. ' + SPEICHERN_HINWEIS)
+        raise FormatFehler('Die Datei ist mit einem Passwort verschlüsselt. Die Browser-App '
+                           '(https://essanz-dev.github.io/essanz-core/) öffnet sie nach Eingabe des '
+                           'Passworts; die Kommandozeile liest nur unverschlüsselte Dateien. '
+                           + SPEICHERN_HINWEIS)
     if kopf.startswith(b'<?xml') or kopf.startswith(b'<client'):
         raise FormatFehler('Die Datei ist im XML-Format gespeichert. Essanz liest bisher nur das '
                            'Binärformat. ' + SPEICHERN_HINWEIS)

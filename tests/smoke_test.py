@@ -146,6 +146,38 @@ open({os.path.join(tmp, 'formular.yaml')!r}, 'w', encoding='utf-8').write(
     kpi_pruefen(json.load(open(os.path.join(ausgabe, 'daten.json'), encoding='utf-8')), fehler, 'formular: ')
 
 
+def run_rate(tmp, fehler):
+    """Mietrendite und DSCR rechnen mit der aktuellen Miete x 12 (Run-Rate), nicht mit der
+    Summe der letzten zwoelf Buchungen. Objekt 1 bekommt drei Monate vor dem Stichtag eine
+    hoehere Miete; die Kennzahl wird unabhaengig aus den Beispielwerten nachgerechnet."""
+    import datetime
+    sys.path.insert(0, os.path.join(ROOT, 'tools'))
+    import make_example_portfolio as gen
+    datei = os.path.join(tmp, 'mieterhoehung.portfolio')
+    with open(datei, 'wb') as f:
+        f.write(gen.build(mieterhoehung={1: (datetime.date(2026, 6, 1), 1100.0)}))
+    ausgabe = os.path.join(tmp, 'mieterhoehung')
+    r = lauf([datei, ausgabe, '--stichtag', STICHTAG])
+    if r.returncode != 0:
+        fehler.append('Lauf mit Mieterhöhung fehlgeschlagen:\n' + r.stderr)
+        return
+    d = json.load(open(os.path.join(ausgabe, 'daten.json'), encoding='utf-8'))
+    inv = [o for o in d['objects'] if not o['selbstgenutzt']]
+    inv_val = sum(o['value'] for o in inv)
+    miete_run = (1100.0 + 780.0) * 12            # Objekt 1 nach Erhoehung, Objekt 2 unveraendert
+    nk_run = (180.0 + 150.0) * 12
+    kosten = sum(o['cost12'] for o in inv)
+    ann = sum(o['annuitaet12'] for o in inv)
+    soll = dict(mietrendite=miete_run / inv_val * 100,
+                dscr=(miete_run + nk_run - kosten) / ann)
+    for k, v in soll.items():
+        if abs(d['kpi'][k] - v) > 1e-6:
+            fehler.append(f'Run-Rate: kpi[{k}] = {d["kpi"][k]}, erwartet {v}')
+    o1 = next(o for o in d['objects'] if o['no'] == 1)
+    if abs(o1.get('rent_runrate', 0) - 1100.0 * 12) > 1e-6 or abs(o1['rent12'] - (950.0 * 9 + 1100.0 * 3)) > 1e-6:
+        fehler.append(f'Run-Rate Objekt 1: rent_runrate={o1.get("rent_runrate")}, rent12={o1["rent12"]}')
+
+
 def fehlerfaelle(tmp, fehler):
     """Kaputte Eingaben enden mit einer Meldung, nicht mit einem Python-Traceback."""
     kaputt = os.path.join(tmp, 'kaputt.portfolio')
@@ -193,6 +225,7 @@ def main():
         os.makedirs(tmp, exist_ok=True)
         fremde_namen(tmp, fehler)
         formular_weg(tmp, fehler)
+        run_rate(tmp, fehler)
         fehlerfaelle(tmp, fehler)
         r = lauf([os.path.join(ROOT, 'beispiel.portfolio'), '--diagnose', '--stichtag', STICHTAG])
         if r.returncode != 0 or 'OBJEKTE' not in r.stdout or '[Warnung]' in r.stdout:
@@ -231,7 +264,7 @@ def main():
         for f in fehler:
             print(' -', f)
         return 1
-    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle, Web-Kern, Anonymisierung, Formular)')
+    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle, Web-Kern, Anonymisierung, Formular, Run-Rate)')
     return 0
 
 
