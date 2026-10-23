@@ -96,6 +96,11 @@ python3 -m http.server 8771 --directory web/dist       # dann http://localhost:8
 `build.py` lädt Pyodide von der offiziellen GitHub-Release-Seite und prüft die Downloads
 per SHA-256. `web/dist/` und `web/.cache/` sind gitignored.
 
+Online läuft dieselbe Fassung unter https://essanz-dev.github.io/essanz-core/. Der Workflow
+`.github/workflows/pages.yml` führt bei jedem Push auf `master` den Rauchtest aus, baut
+`web/dist/` und veröffentlicht es auf GitHub Pages; schlägt der Test fehl, bleibt die alte
+Fassung online.
+
 ## Wie die Konfiguration funktioniert
 
 Alle persönlichen Daten (Adressen, Mieternamen, Darlehenskonditionen, Steuerwerte) liegen

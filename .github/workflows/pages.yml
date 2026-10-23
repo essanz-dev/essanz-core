@@ -1,0 +1,59 @@
+# Baut die Browser-App (web/build.py) und veröffentlicht sie auf GitHub Pages.
+# Vorher läuft der Rauchtest; schlägt er fehl, wird nichts veröffentlicht.
+# Voraussetzung (einmalig): Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Browser-App auf GitHub Pages
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  bauen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Abhängigkeiten
+        run: pip install pyyaml
+
+      - name: Rauchtest
+        run: python3 tests/smoke_test.py
+
+      - name: Pyodide-Downloads aus dem Cache
+        uses: actions/cache@v4
+        with:
+          path: web/.cache
+          key: pyodide-${{ hashFiles('web/build.py') }}
+
+      - name: Browser-App bauen
+        run: python3 web/build.py
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  veroeffentlichen:
+    needs: bauen
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

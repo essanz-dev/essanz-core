@@ -35,7 +35,8 @@ Oberflaeche: Deutsch.
    (kein CDN, kein Tracking; Pyodide wird von `web/build.py` mit ausgeliefert, CSP in `web/index.html`).
 6. Nicht im offenen Kern: PDF-Bericht, Excel-Export, Pruefroutinen (moeglicher Bezahlteil). Nicht ohne Auftrag ergaenzen.
 7. Externe Pull Requests nur mit Contributor-Vereinbarung (CLA) annehmen, solange Dual Licensing offen bleiben soll.
-8. Nichts pushen oder veroeffentlichen ohne ausdrueckliche Freigabe des Gruenders.
+8. Nichts pushen oder veroeffentlichen ohne ausdrueckliche Freigabe des Gruenders. Jeder Push auf `master`
+   veroeffentlicht ueber `.github/workflows/pages.yml` auch die Browser-App (https://essanz-dev.github.io/essanz-core/).
 
 ## Hinweise
 - Geldbetraege im Binaerformat: Betraege in Cent, Stueckzahlen und Kurse mit 1e8 skaliert; Datum als Epoch-Sekunden.
