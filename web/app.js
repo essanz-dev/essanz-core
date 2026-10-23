@@ -9,6 +9,7 @@ let py = null;
 let eigeneConfig = null; // {name, text}
 let letzte = null; // {bytes, name, stichtag, cfg}: zuletzt gepruefte Datei, nur im Speicher dieser Seite
 let anonymGewaehlt = false;
+const MERK_SCHLUESSEL = 'essanz.config';
 
 function status(text, fehler = false) {
   statusEl.textContent = text;
@@ -59,6 +60,27 @@ def essanz_dashboard(pfad, stichtag, cfg_pfad, anonym):
             d = analyze.anonymisieren(d)
         return dict(html=make_dashboard.html(d))
     return _lauf(cfg_pfad, arbeit)
+
+def _basis(basis_pfad):
+    import yaml
+    if not basis_pfad:
+        return {}
+    with open(basis_pfad, encoding='utf-8') as f:
+        return yaml.safe_load(f) or {}
+
+def essanz_formular(pfad, stichtag, cfg_pfad, basis_pfad):
+    def arbeit():
+        import analyze, formular
+        b = analyze.Book(pfad, stichtag)
+        return dict(daten=formular.daten(b, stichtag, _basis(basis_pfad)))
+    return _lauf(cfg_pfad, arbeit)
+
+def essanz_config(basis_pfad, stand_json):
+    def arbeit():
+        import formular
+        cfg = formular.config_bauen(_basis(basis_pfad), json.loads(stand_json))
+        return dict(yaml=formular.als_yaml(cfg))
+    return _lauf('', arbeit)
 `;
 
 async function start() {
@@ -127,7 +149,7 @@ function pruefen(bytes, dateiname, cfg = eigeneConfig) {
     status(`Die Datei ${dateiname} ließ sich nicht prüfen.`, true);
     return;
   }
-  letzte = { bytes, name: dateiname, stichtag, cfg };
+  letzte = { bytes, name: dateiname, stichtag, cfg, demo: dateiname === 'beispiel.portfolio' && !cfg };
   zeige(r.bericht, dateiname);
   status(`${dateiname} geprüft in ${ms} ms.`);
   if (r.bericht.hinweise.some((h) => h.stufe === 'Fehler')) {
@@ -185,17 +207,94 @@ function zeigeDashboard(html) {
   zeigeDashboard.aufraeumen = () => window.removeEventListener('message', empfang);
 }
 
-function speichern() {
-  if (!letzte?.html) return;
-  const tag = letzte.stichtag.replaceAll('-', '') + (letzte.anonym ? '_anonym' : '');
-  const url = URL.createObjectURL(new Blob([letzte.html], { type: 'text/html;charset=utf-8' }));
+// Grundlage fuer das Formular: die geladene Config, bei der Beispieldatei die Beispiel-Config,
+// sonst nichts (damit keine erfundenen Beispielwerte in eine echte Config wandern).
+function basisPfad() {
+  if (letzte?.cfg) {
+    py.FS.writeFile('/eingabe/basis.yaml', letzte.cfg.text);
+    return '/eingabe/basis.yaml';
+  }
+  return letzte?.demo ? '/essanz/config.example.yaml' : '';
+}
+
+function formularOeffnen() {
+  if (!letzte) return;
+  const cfgPfad = eingabeSchreiben(letzte.bytes, letzte.cfg);
+  let r;
+  try {
+    r = aufruf('essanz_formular', '/eingabe/datei.portfolio', letzte.stichtag, cfgPfad, basisPfad());
+  } finally {
+    eingabeLoeschen();
+  }
+  const el = $('formular');
+  if (!r.ok) {
+    el.hidden = false;
+    el.innerHTML = `<div class="meldung Fehler"><b>Fehler</b>${esc(r.fehler)}</div>`;
+    return;
+  }
+  el.hidden = false;
+  Formular.zeigen(el, r.daten, {
+    uebernehmen(stand) {
+      const text = configBauen(stand);
+      if (text === null) return;
+      setzeConfig({ name: 'aus dem Formular', text });
+      pruefen(letzte.bytes, letzte.name, eigeneConfig);
+    },
+    herunterladen(stand) {
+      const text = configBauen(stand);
+      if (text !== null) herunterladen(text, 'config.yaml', 'text/yaml;charset=utf-8');
+    },
+    abbrechen() {
+      el.hidden = true;
+      el.innerHTML = '';
+    },
+  });
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function configBauen(stand) {
+  let r;
+  try {
+    r = aufruf('essanz_config', basisPfad(), JSON.stringify(stand));
+  } finally {
+    eingabeLoeschen();
+  }
+  if (!r.ok) {
+    alert('Die Zuordnung ließ sich nicht übernehmen: ' + r.fehler);
+    return null;
+  }
+  return r.yaml;
+}
+
+function merkenSchreiben() {
+  try {
+    if ($('merken').checked && eigeneConfig) localStorage.setItem(MERK_SCHLUESSEL, eigeneConfig.text);
+    else localStorage.removeItem(MERK_SCHLUESSEL);
+  } catch { /* Speicher nicht verfuegbar, dann eben nicht merken */ }
+}
+
+function setzeConfig(cfg) {
+  eigeneConfig = cfg;
+  $('config-name').textContent = cfg ? `Config: ${cfg.name}` : 'Ohne eigene Config gilt die Essanz-Namenskonvention.';
+  $('config-weg').hidden = !cfg;
+  merkenSchreiben();
+}
+
+function herunterladen(text, dateiname, typ) {
+  const url = URL.createObjectURL(new Blob([text], { type: typ }));
   const a = document.createElement('a');
   a.href = url;
-  a.download = `Dashboard_${tag}.html`;
+  a.download = dateiname;
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function speichern() {
+  if (!letzte?.html) return;
+  const tag = letzte.stichtag.replaceAll('-', '') + (letzte.anonym ? '_anonym' : '');
+  herunterladen(letzte.html, `Dashboard_${tag}.html`, 'text/html;charset=utf-8');
 }
 
 function zeigeFehler(r, dateiname) {
@@ -251,8 +350,12 @@ function zeige(b, dateiname) {
       <p class="leise">Stichtag ${esc(b.stichtag)} · Buchungen von ${esc(b.von)} bis ${esc(b.bis)} · ${b.buchungen} Buchungen ·
         ${b.beispiel_config ? 'Beispiel-Konfiguration' : 'eigene Konfiguration'}</p>
       <h2>Hinweise</h2>${hinweise}
-      <p><a href="#dashboard">Zum Dashboard ↓</a></p>
+      <div class="reihe knopfleiste">
+        <button type="button" class="knopf${b.hinweise.some((h) => h.stufe !== 'Info') || !b.objekte.length ? ' haupt' : ''}" id="formular-auf">Zuordnung bearbeiten</button>
+        <a href="#dashboard">Zum Dashboard ↓</a>
+      </div>
     </section>
+    <section class="karte" id="formular" hidden></section>
     <section class="karte"><h2>Summen zum Stichtag</h2><div class="summen">${summen}</div></section>
     <section class="karte"><h2>Immobilien</h2>${objekte}</section>
     <section class="karte"><h2>Konten</h2><div class="tabelle"><table>
@@ -274,6 +377,7 @@ function zeige(b, dateiname) {
       <iframe id="dash-rahmen" title="Dashboard" hidden></iframe>
     </section>`;
   $('speichern').addEventListener('click', speichern);
+  $('formular-auf').addEventListener('click', formularOeffnen);
   $('anonym').addEventListener('change', dashboardBauen);
 
   const k = $('kopieren');
@@ -307,16 +411,20 @@ $('demo').addEventListener('click', () => {
 $('config').addEventListener('change', async (ev) => {
   const f = ev.target.files[0];
   if (!f) return;
-  eigeneConfig = { name: f.name, text: await f.text() };
-  $('config-name').textContent = `Config: ${f.name}`;
-  $('config-weg').hidden = false;
+  setzeConfig({ name: f.name, text: await f.text() });
   ev.target.value = '';
 });
 
-$('config-weg').addEventListener('click', () => {
-  eigeneConfig = null;
-  $('config-name').textContent = 'Ohne eigene Config gilt die Essanz-Namenskonvention.';
-  $('config-weg').hidden = true;
-});
+$('config-weg').addEventListener('click', () => setzeConfig(null));
+$('merken').addEventListener('change', merkenSchreiben);
+
+// Gemerkte Config (nur wenn sie ausdruecklich gemerkt wurde) wieder einsetzen.
+try {
+  const text = localStorage.getItem(MERK_SCHLUESSEL);
+  if (text) {
+    $('merken').checked = true;
+    setzeConfig({ name: 'in diesem Browser gemerkt', text });
+  }
+} catch { /* Speicher nicht verfuegbar */ }
 
 start();

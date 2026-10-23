@@ -14,8 +14,17 @@ import config
 
 
 def zinsbindung_fuer(konto):
-    """Liefert die Zinsbindungsdaten fuer ein Darlehenskonto, oder None."""
-    return config.zinsbindungen().get(konto)
+    """Liefert die Zinsbindungsdaten fuer ein Darlehenskonto, oder None.
+
+    Ohne 'ende' oder 'sollzins' gilt der Eintrag als unvollstaendig und wird ignoriert
+    (diagnose.py meldet das). Ein unquotiertes YAML-Datum wird in Text umgewandelt.
+    """
+    z = config.zinsbindungen().get(konto)
+    if not isinstance(z, dict) or not z.get('ende') or z.get('sollzins') is None:
+        return None
+    return dict(ende=str(z['ende']), sollzins=float(z['sollzins']),
+                sondertilgung=z.get('sondertilgung'), nennbetrag=z.get('nennbetrag'),
+                kfw=bool(z.get('kfw', False)), quelle=z.get('quelle') or '')
 
 
 def stamm_fuer(objekt_no, anonym=False):

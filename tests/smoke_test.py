@@ -98,6 +98,54 @@ def fremde_namen(tmp, fehler):
     kpi_pruefen(json.load(open(os.path.join(ausgabe, 'daten.json'), encoding='utf-8')), fehler, 'fremd: ')
 
 
+def formular_weg(tmp, fehler):
+    """Wie in der Browser-App: Datei mit fremden Namen, Zuordnung per Formular, daraus eine
+    config.yaml bauen und rechnen. Ergebnis muss den Referenzwerten entsprechen."""
+    skript = f"""
+import json, os, sys
+sys.path.insert(0, {ROOT!r}); sys.path.insert(0, {os.path.join(ROOT, 'tools')!r})
+os.environ['ESSANZ_CONFIG'] = {os.path.join(ROOT, 'config.example.yaml')!r}
+import yaml, analyze, formular
+basis = yaml.safe_load(open({os.path.join(ROOT, 'config.example.yaml')!r}, encoding='utf-8'))
+b = analyze.Book({os.path.join(ROOT, 'beispiel.portfolio')!r}, {STICHTAG!r})
+d = formular.daten(b, {STICHTAG!r}, basis)
+assert [o['nr'] for o in d['objekte']] == ['1', '2', '3'], d['objekte']
+assert d['objekte'][2]['selbstgenutzt'] and d['objekte'][0]['darlehen'] == ['Darlehenskonto 1']
+assert d['zinsbindungen']['Darlehenskonto 1']['ende'] == '2031-08-31'
+umb = json.loads({json.dumps(UMBENENNEN, ensure_ascii=False)!r})
+f = analyze.Book({os.path.join(tmp, 'fremd.portfolio')!r}, {STICHTAG!r})
+df = formular.daten(f, {STICHTAG!r}, dict())
+assert not df['objekte'], 'fremde Datei: Objekte ohne Zuordnung erkannt'
+stand = dict(
+    objekte=[dict(nr=o['nr'], name=o['name'], konto=umb[o['konto']], wertpapier=umb[o['wertpapier']],
+                  darlehen=[umb[x] for x in o['darlehen']], selbstgenutzt=o['selbstgenutzt'],
+                  lage=o['lage'], lage_anonym=o['lage_anonym'], baujahr=o['baujahr'],
+                  wohnflaeche_m2=o['wohnflaeche_m2']) for o in d['objekte']],
+    konten_gruppe=dict((k['name'], k['gruppe']) for k in df['konten']),
+    depot_gruppe=dict((x['name'], 'Immobilien' if x['name'] == umb['Immobilien'] else 'Wertpapiere')
+                      for x in df['depots']),
+    zinsbindungen=dict((umb[k], v) for k, v in d['zinsbindungen'].items()),
+)
+rest = dict((k, v) for k, v in basis.items() if k not in ('zinsbindungen', 'objektstamm', 'konten'))
+open({os.path.join(tmp, 'formular.yaml')!r}, 'w', encoding='utf-8').write(
+    formular.als_yaml(formular.config_bauen(rest, stand)))
+"""
+    r = subprocess.run([sys.executable, '-c', skript], capture_output=True, text=True)
+    if r.returncode != 0:
+        fehler.append('Formular-Weg fehlgeschlagen:\n' + r.stderr[-1500:])
+        return
+    cfg = os.path.join(tmp, 'formular.yaml')
+    r = lauf([os.path.join(tmp, 'fremd.portfolio'), '--diagnose', '--stichtag', STICHTAG, '--config', cfg])
+    if r.returncode != 0 or '[Warnung]' in r.stdout or '[Fehler]' in r.stdout:
+        fehler.append('Diagnose mit Formular-Config nicht sauber:\n' + r.stdout[-1500:] + r.stderr)
+    ausgabe = os.path.join(tmp, 'formular')
+    r = lauf([os.path.join(tmp, 'fremd.portfolio'), ausgabe, '--stichtag', STICHTAG, '--config', cfg])
+    if r.returncode != 0:
+        fehler.append('Lauf mit Formular-Config fehlgeschlagen:\n' + r.stderr)
+        return
+    kpi_pruefen(json.load(open(os.path.join(ausgabe, 'daten.json'), encoding='utf-8')), fehler, 'formular: ')
+
+
 def fehlerfaelle(tmp, fehler):
     """Kaputte Eingaben enden mit einer Meldung, nicht mit einem Python-Traceback."""
     kaputt = os.path.join(tmp, 'kaputt.portfolio')
@@ -141,7 +189,10 @@ def main():
     fehler = []
     web_vollstaendig(fehler)
     with tempfile.TemporaryDirectory() as tmp:
+        tmp = os.environ.get('ESSANZ_TEST_ORDNER') or tmp
+        os.makedirs(tmp, exist_ok=True)
         fremde_namen(tmp, fehler)
+        formular_weg(tmp, fehler)
         fehlerfaelle(tmp, fehler)
         r = lauf([os.path.join(ROOT, 'beispiel.portfolio'), '--diagnose', '--stichtag', STICHTAG])
         if r.returncode != 0 or 'OBJEKTE' not in r.stdout or '[Warnung]' in r.stdout:
@@ -180,7 +231,7 @@ def main():
         for f in fehler:
             print(' -', f)
         return 1
-    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle, Web-Kern, Anonymisierung)')
+    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle, Web-Kern, Anonymisierung, Formular)')
     return 0
 
 

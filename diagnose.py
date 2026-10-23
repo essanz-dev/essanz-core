@@ -91,7 +91,10 @@ def hinweise(b, snap):
         if name not in namen_depot and name not in _config.DEFAULT_KONTEN['depot_gruppe']:
             out.append(('Warnung', f'konten.depot_gruppe nennt {name!r}, das Depot gibt es nicht.'))
     darlehen_namen = {b.acc[u]['name'] for u in b.acc if b.acc_group[u] == 'Darlehen'}
-    for name in _config.zinsbindungen():
+    for name, z in _config.zinsbindungen().items():
+        if not isinstance(z, dict) or not z.get('ende') or z.get('sollzins') is None:
+            out.append(('Warnung', f'zinsbindungen {name!r}: „ende“ (Datum) und „sollzins“ (Prozent) '
+                        'sind Pflicht, sonst wird der Eintrag ignoriert.'))
         if name not in darlehen_namen:
             out.append(('Warnung', f'zinsbindungen nennt {name!r}, das ist aber kein erkanntes '
                         'Darlehenskonto. Der Schlüssel muss exakt dem Kontonamen in PP entsprechen.'))

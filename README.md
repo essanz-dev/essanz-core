@@ -82,7 +82,10 @@ Unter `web/` liegt eine Browser-Fassung. Der Python-Kern läuft dort per
 wird mit dem Datei-Dialog gelesen und verlässt den Rechner nicht. Es gibt keinen Server
 und keinen Upload, und Pyodide wird mit ausgeliefert statt von einem CDN geladen. Die Seite
 zeigt erst die Diagnose (wie `--diagnose`) und darunter das volle Dashboard, das sich als
-HTML-Datei speichern lässt, auf Wunsch anonymisiert. Das Dashboard läuft in einem eigenen
+HTML-Datei speichern lässt, auf Wunsch anonymisiert. Folgt die Datei nicht der
+Namenskonvention, ordnet man im Formular „Zuordnung bearbeiten“ jeder Immobilie Konto,
+Wertpapier und Darlehen zu und trägt Zinsbindungen ein; daraus entsteht eine `config.yaml`
+zum Herunterladen (oder, nur auf ausdrücklichen Wunsch, im Browser gemerkt). Das Dashboard läuft in einem eigenen
 Rahmen (`dashboard.html`), dessen Content Security Policy jede Netzwerkverbindung sperrt.
 
 ```bash
@@ -119,6 +122,7 @@ Datei wofür zuständig ist.
 | `empfehlungen.py` | Regelbasierte Handlungsempfehlungen aus den Kennzahlen — generisch formuliert, ohne Objektnamen. Eigene, persönlichere Fassung ist einfach eine andere Datei mit derselben `build(data)`-Signatur. |
 | `make_dashboard.py` | Setzt Template, Daten, Chart-JS (`dash.js`) und Empfehlungen zum fertigen HTML zusammen. |
 | `diagnose.py` | Zeigt mit `--diagnose`, wie Konten, Depots und Objekte eingeordnet werden, und prüft Datei und Config gegeneinander. |
+| `formular.py` | Zuordnung per Formular: Auswahllisten aus der Datei, aus den Eingaben eine `config.yaml` bauen (Browser-App). |
 | `web/` | Browser-App (Prototyp): `index.html`, `app.js`, `app.css`, `build.py` bündelt Pyodide und Kern nach `web/dist/`. |
 | `run_update.py` | Kommandozeilen-Einstieg, übersetzt Fehler in verständliche Meldungen (`--debug` zeigt den vollen Python-Fehler). |
 | `tools/make_example_portfolio.py` | Erzeugt `beispiel.portfolio` — die fiktive Demo-Datei. Kein Teil der Bibliothek selbst. |

@@ -32,9 +32,9 @@ WEB = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(WEB)
 CACHE = os.path.join(WEB, '.cache')
 DIST = os.path.join(WEB, 'dist')
-SEITE = ['index.html', 'app.js', 'app.css', 'dashboard.html', 'dashboard-rahmen.js']
+SEITE = ['index.html', 'app.js', 'app.css', 'formular.js', 'dashboard.html', 'dashboard-rahmen.js']
 # Kern-Dateien, die im Browser gebraucht werden (run_update.py ist die Kommandozeile, nicht noetig).
-KERN = ['analyze.py', 'config.py', 'diagnose.py', 'empfehlungen.py', 'forecast.py',
+KERN = ['analyze.py', 'config.py', 'diagnose.py', 'empfehlungen.py', 'forecast.py', 'formular.py',
         'make_dashboard.py', 'objektdaten.py', 'ppparse.py', 'schwellen.py', 'steuer.py',
         'stress.py', 'template.html', 'dash.js', 'config.example.yaml', 'beispiel.portfolio']
 

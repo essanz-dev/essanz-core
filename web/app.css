@@ -138,6 +138,24 @@ details.technik summary { cursor: pointer; color: var(--leise); }
 .schalter { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
 .karte a { color: var(--akzent); }
 
+/* Formular */
+#formular h3.abschnitt { margin: 22px 0 8px; font-size: 1rem; }
+.objekt-form { border: 1px solid var(--linie); border-radius: 8px; padding: 10px 14px 12px; margin: 0 0 12px; }
+.objekt-form legend { font-weight: 600; padding: 0 4px; }
+.raster { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 14px; align-items: end; }
+.raster label:not(.schalter) { display: flex; flex-direction: column; gap: 3px; font-size: 0.88rem; color: var(--leise); }
+.raster input:not([type=checkbox]), .raster select, #formular td select {
+  font: inherit; font-size: 0.95rem; color: var(--text); background: var(--flaeche);
+  border: 1px solid var(--linie); border-radius: 6px; padding: 6px 8px; width: 100%; min-width: 0;
+}
+.unterfeld { margin-top: 10px; }
+.feldname { display: block; font-size: 0.88rem; color: var(--leise); margin-bottom: 3px; }
+.wahl { display: block; padding: 2px 0; }
+.wahl.belegt { opacity: 0.55; }
+.zins { border-top: 1px solid var(--linie); padding-top: 8px; margin-top: 8px; }
+.zins h3 { font-size: 0.95rem; margin: 0 0 6px; }
+.knopfleiste { margin-top: 14px; }
+
 /* Schmale Bildschirme: jede Tabellenzeile als zweizeiliger Eintrag statt seitlich zu scrollen. */
 @media (max-width: 600px) {
   .tabelle thead { display: none; }

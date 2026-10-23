@@ -19,7 +19,7 @@
 
 <main class="wrap">
   <section class="karte" id="eingabe">
-    <p class="schutz">Die Datei wird nur in diesem Browser gelesen. Es wird nichts hochgeladen oder gespeichert.</p>
+    <p class="schutz">Die Datei wird nur in diesem Browser gelesen und nie hochgeladen. Gespeichert wird nur, was du selbst herunterlädst oder ausdrücklich merken lässt.</p>
 
     <div class="reihe">
       <label class="datei">
@@ -39,6 +39,7 @@
         </label>
         <span id="config-name" class="leise">Ohne eigene Config gilt die Essanz-Namenskonvention.</span>
         <button type="button" class="knopf leise-knopf" id="config-weg" hidden>Config entfernen</button>
+        <label class="schalter"><input type="checkbox" id="merken"> Config in diesem Browser merken (nur auf diesem Gerät)</label>
       </div>
     </details>
 
@@ -54,6 +55,7 @@
 </footer>
 
 <script src="pyodide/pyodide.js"></script>
+<script src="formular.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

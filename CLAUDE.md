@@ -17,7 +17,8 @@ Oberflaeche: Deutsch.
 ## Architektur (Datenfluss)
 `ppparse.py` (Binaerformat lesen) -> `analyze.py` (`Book`, `build()`: Bilanz, Kennzahlen, Monatsreihe, Rendite; liest Config)
 -> `schwellen.py` (Ampeln, Glossar), `stress.py`, `forecast.py` -> `empfehlungen.py` (regelbasierte Texte)
--> `diagnose.py` (Einordnung pruefen, `bericht()` liefert JSON fuer Terminal und Browser)
+-> `diagnose.py` (Einordnung pruefen, `bericht()` liefert JSON fuer Terminal und Browser), `formular.py`
+(Formular der Browser-App: `daten()`, `config_bauen()`, `als_yaml()`)
 -> `make_dashboard.py` (fuegt `template.html` + `dash.js` + Daten zu einer HTML-Datei zusammen) -> `run_update.py` (CLI).
 `config.py` laedt `config.yaml` (Suchreihenfolge: `ESSANZ_CONFIG`, `./config.yaml`, mitgelieferte `config.example.yaml`).
 `objektdaten.py` und `steuer.py` lesen nur aus der Config.
