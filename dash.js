@@ -437,7 +437,8 @@ function head(){
   set('dYtd',k.delta_ytd); set('d12',k.delta12);
   const T=[
     ['Vermögen gesamt',eur(k.assets),'Immobilien, Depots, Konten'],
-    ['Verbindlichkeiten',eur(k.debt),k.n_inv+k.n_eig+' Objekte, 10 Darlehen'],
+    ['Verbindlichkeiten',eur(k.debt),(()=>{const o=k.n_inv+k.n_eig, n=(DATA.darlehen||[]).length;
+      return o+(o===1?' Objekt, ':' Objekte, ')+n+' Darlehen';})()],
     ['Eigenkapitalquote',pct(k.eigenkapitalquote),'Netto zu Gesamtvermögen'],
     ['Kapitalvermögen liquide',eur(k.liquid),'Depots, P2P, freie Konten'],
     ['Kapitalanlage-Immobilien',eur(k.inv_val),k.n_inv+' vermietete Objekte · '+pct(k.inv_ltv,0)+' beliehen'],

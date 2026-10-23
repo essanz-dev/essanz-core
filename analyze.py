@@ -1082,7 +1082,37 @@ def anonymisieren(d):
         if neu:
             a['name'] = neu
             a['label'] = neu if ' · ' not in a['label'] else neu + a['label'][a['label'].index(' · '):]
-    return d
+
+    # Objektnamen stammen aus den Kontonamen ("Immobilie 1: Bergstrasse 14") und tauchen
+    # deshalb in vielen Feldern auf (Konten, Darlehen, Dauerauftraege, Steuer, Positionen).
+    # Darum ueberall ersetzen, nicht nur in d['objects'].
+    ersatz = dict(kontoname_anonym)
+    for o in d['objects']:
+        no = str(o['no'])
+        voll = _stamm.stamm_fuer(no) or {}
+        kurz = voll.get('lage_anonym')
+        if voll.get('lage') and kurz and voll['lage'] != kurz:
+            ersatz[voll['lage']] = kurz
+        if voll.get('mieter_name'):
+            ersatz[voll['mieter_name']] = 'Mieter:in'
+        if o.get('name') and len(o['name']) >= 4:
+            ersatz[o['name']] = 'Objekt %s' % no + (' (%s)' % kurz if kurz else '')
+            o['name'] = ersatz[o['name']]
+    muster = sorted((k for k in ersatz if k), key=len, reverse=True)
+
+    def weg(v, schluessel=''):
+        if isinstance(v, dict):
+            return {k: (v2 if k in ('glossar', 'lesepfade') else weg(v2, k)) for k, v2 in v.items()}
+        if isinstance(v, list):
+            return [weg(x, schluessel) for x in v]
+        if isinstance(v, str):
+            if schluessel.endswith('quelle') and v:
+                return 'siehe Konfiguration (anonymisierte Fassung)'
+            for m in muster:
+                if m in v:
+                    v = v.replace(m, ersatz[m])
+        return v
+    return weg(d)
 
 
 if __name__ == '__main__':

@@ -134,6 +134,10 @@ pre {
 .fuss a { color: var(--akzent); }
 details.technik summary { cursor: pointer; color: var(--leise); }
 
+#dash-rahmen { display: block; width: 100%; height: 600px; border: 1px solid var(--linie); border-radius: 8px; margin-top: 10px; background: #fff; }
+.schalter { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.karte a { color: var(--akzent); }
+
 /* Schmale Bildschirme: jede Tabellenzeile als zweizeiliger Eintrag statt seitlich zu scrollen. */
 @media (max-width: 600px) {
   .tabelle thead { display: none; }

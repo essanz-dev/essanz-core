@@ -163,6 +163,16 @@ def main():
                 for marker in ('/*__DATA__*/null', '/*__JS__*/', '<!--__EMPF__-->'):
                     if marker in text:
                         fehler.append(f'Platzhalter nicht ersetzt: {marker}')
+            if anonym:
+                # Keine Strasse aus der Beispiel-Config darf in der anonymen Fassung stehen.
+                stamm = yaml.safe_load(open(os.path.join(ROOT, 'config.example.yaml'),
+                                            encoding='utf-8'))['objektstamm']
+                strassen = [v['lage'].split(', ', 1)[1] for v in stamm.values() if ', ' in v['lage']]
+                for datei in [html[0], 'daten.json'] if html else ['daten.json']:
+                    text = open(os.path.join(ausgabe, datei), encoding='utf-8').read()
+                    for st in strassen:
+                        if st in text:
+                            fehler.append(f'anonyme Fassung enthält {st!r} in {datei}')
             if not anonym:
                 kpi_pruefen(json.load(open(os.path.join(ausgabe, 'daten.json'), encoding='utf-8')), fehler)
     if fehler:
@@ -170,7 +180,7 @@ def main():
         for f in fehler:
             print(' -', f)
         return 1
-    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle, Web-Kern)')
+    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle, Web-Kern, Anonymisierung)')
     return 0
 
 

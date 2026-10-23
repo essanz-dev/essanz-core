@@ -11,7 +11,7 @@ Was passiert:
      Die Downloads liegen danach in web/.cache/ und werden nicht erneut geladen.
   2. Der Essanz-Kern (*.py, Vorlage, Beispieldatei, Beispiel-Config) wird nach dist/core/
      kopiert, dazu ein manifest.json mit der Dateiliste.
-  3. Die Seite selbst (index.html, app.js, app.css) wird nach dist/ kopiert.
+  3. Die Seite selbst (index.html, app.js, app.css, Dashboard-Rahmen) wird nach dist/ kopiert.
 
 Die App laedt zur Laufzeit nur Dateien aus dist/ (gleiche Herkunft, kein CDN). Die
 .portfolio-Datei der Nutzer:innen wird im Browser gelesen und nie gesendet.
@@ -32,7 +32,7 @@ WEB = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(WEB)
 CACHE = os.path.join(WEB, '.cache')
 DIST = os.path.join(WEB, 'dist')
-SEITE = ['index.html', 'app.js', 'app.css']
+SEITE = ['index.html', 'app.js', 'app.css', 'dashboard.html', 'dashboard-rahmen.js']
 # Kern-Dateien, die im Browser gebraucht werden (run_update.py ist die Kommandozeile, nicht noetig).
 KERN = ['analyze.py', 'config.py', 'diagnose.py', 'empfehlungen.py', 'forecast.py',
         'make_dashboard.py', 'objektdaten.py', 'ppparse.py', 'schwellen.py', 'steuer.py',

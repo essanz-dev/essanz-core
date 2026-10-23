@@ -5,7 +5,8 @@ import empfehlungen
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 
-def build(data, out_path):
+def html(data):
+    """Das fertige Dashboard als HTML-Text (fuer Datei und Browser-App)."""
     tpl = open(os.path.join(HERE, 'template.html'), encoding='utf-8').read()
     js  = open(os.path.join(HERE, 'dash.js'), encoding='utf-8').read()
     payload = dict(
@@ -28,10 +29,14 @@ def build(data, out_path):
                         key=lambda a: -a['balance']),
     )
     empf, _ = empfehlungen.build(data)
-    out = (tpl.replace('/*__DATA__*/null', json.dumps(payload, ensure_ascii=False))
-              .replace('/*__JS__*/', js)
-              .replace('<!--__EMPF__-->', empf))
-    open(out_path, 'w', encoding='utf-8').write(out)
+    return (tpl.replace('/*__DATA__*/null', json.dumps(payload, ensure_ascii=False))
+               .replace('/*__JS__*/', js)
+               .replace('<!--__EMPF__-->', empf))
+
+
+def build(data, out_path):
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(html(data))
     return out_path
 
 if __name__ == '__main__':

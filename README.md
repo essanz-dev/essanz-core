@@ -54,7 +54,9 @@ Datei einfach im Browser öffnen.
    ```
 
 Ohne `--stichtag` wird der heutige Tag verwendet. Mit `--anonym` entsteht zusätzlich eine
-Fassung ohne Adressen und Mieternamen, gedacht zum Teilen außerhalb der eigenen Familie.
+Fassung ohne Adressen und Mieternamen, gedacht zum Teilen außerhalb der eigenen Familie:
+Objektnamen werden überall durch „Objekt N (Ort)“ ersetzt, auch in Konto- und
+Darlehensnamen, Quellenangaben entfallen.
 
 Kein Abschnitt in `config.yaml` ist Pflicht — ohne `steuer:` bleiben die Steuerspalten
 leer, ohne `zinsbindungen:` fehlt die Fälligkeitsleiste, der Rest funktioniert trotzdem.
@@ -78,8 +80,10 @@ Zuordnung nicht, weist der normale Lauf darauf hin; Details zeigt `--diagnose`.
 Unter `web/` liegt eine Browser-Fassung. Der Python-Kern läuft dort per
 [Pyodide](https://pyodide.org/) (Python als WebAssembly) im Browser. Die `.portfolio`-Datei
 wird mit dem Datei-Dialog gelesen und verlässt den Rechner nicht. Es gibt keinen Server
-und keinen Upload, und Pyodide wird mit ausgeliefert statt von einem CDN geladen. Bisher
-zeigt die Seite die Diagnose (wie `--diagnose`), das Dashboard folgt.
+und keinen Upload, und Pyodide wird mit ausgeliefert statt von einem CDN geladen. Die Seite
+zeigt erst die Diagnose (wie `--diagnose`) und darunter das volle Dashboard, das sich als
+HTML-Datei speichern lässt, auf Wunsch anonymisiert. Das Dashboard läuft in einem eigenen
+Rahmen (`dashboard.html`), dessen Content Security Policy jede Netzwerkverbindung sperrt.
 
 ```bash
 python3 web/build.py                                   # lädt Pyodide einmal, baut web/dist/
