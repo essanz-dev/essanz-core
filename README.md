@@ -73,6 +73,22 @@ unter `konten:` nach exaktem Namen zu (Beispiel am Ende von `config.example.yaml
 Alle übrigen Konten zählen als Liquidität, alle übrigen Depots als Wertpapiere. Passt die
 Zuordnung nicht, weist der normale Lauf darauf hin; Details zeigt `--diagnose`.
 
+## Im Browser (Prototyp)
+
+Unter `web/` liegt eine Browser-Fassung. Der Python-Kern läuft dort per
+[Pyodide](https://pyodide.org/) (Python als WebAssembly) im Browser. Die `.portfolio`-Datei
+wird mit dem Datei-Dialog gelesen und verlässt den Rechner nicht. Es gibt keinen Server
+und keinen Upload, und Pyodide wird mit ausgeliefert statt von einem CDN geladen. Bisher
+zeigt die Seite die Diagnose (wie `--diagnose`), das Dashboard folgt.
+
+```bash
+python3 web/build.py                                   # lädt Pyodide einmal, baut web/dist/
+python3 -m http.server 8771 --directory web/dist       # dann http://localhost:8771/ öffnen
+```
+
+`build.py` lädt Pyodide von der offiziellen GitHub-Release-Seite und prüft die Downloads
+per SHA-256. `web/dist/` und `web/.cache/` sind gitignored.
+
 ## Wie die Konfiguration funktioniert
 
 Alle persönlichen Daten (Adressen, Mieternamen, Darlehenskonditionen, Steuerwerte) liegen
@@ -99,6 +115,7 @@ Datei wofür zuständig ist.
 | `empfehlungen.py` | Regelbasierte Handlungsempfehlungen aus den Kennzahlen — generisch formuliert, ohne Objektnamen. Eigene, persönlichere Fassung ist einfach eine andere Datei mit derselben `build(data)`-Signatur. |
 | `make_dashboard.py` | Setzt Template, Daten, Chart-JS (`dash.js`) und Empfehlungen zum fertigen HTML zusammen. |
 | `diagnose.py` | Zeigt mit `--diagnose`, wie Konten, Depots und Objekte eingeordnet werden, und prüft Datei und Config gegeneinander. |
+| `web/` | Browser-App (Prototyp): `index.html`, `app.js`, `app.css`, `build.py` bündelt Pyodide und Kern nach `web/dist/`. |
 | `run_update.py` | Kommandozeilen-Einstieg, übersetzt Fehler in verständliche Meldungen (`--debug` zeigt den vollen Python-Fehler). |
 | `tools/make_example_portfolio.py` | Erzeugt `beispiel.portfolio` — die fiktive Demo-Datei. Kein Teil der Bibliothek selbst. |
 

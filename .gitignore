@@ -23,3 +23,10 @@ venv/
 # Editor/OS
 .DS_Store
 *.swp
+
+# Browser-App: gebaute Ausgabe und heruntergeladenes Pyodide (python3 web/build.py)
+web/dist/
+web/.cache/
+
+# Lokale Claude-Code-Einstellungen
+.claude/

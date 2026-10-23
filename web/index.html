@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Keine Anfragen an Dritte: alles, auch Python (Pyodide), kommt von derselben Adresse. -->
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; connect-src 'self'; style-src 'self'; img-src 'self' data:; base-uri 'none'; form-action 'none'">
+<title>Essanz – Datei prüfen</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header class="kopf">
+  <div class="wrap">
+    <h1>Essanz <span class="leise">Prototyp</span></h1>
+    <p class="unter">Prüft, wie Essanz deine Portfolio-Performance-Datei einordnet: Konten, Depots, Immobilien und Darlehen.</p>
+  </div>
+</header>
+
+<main class="wrap">
+  <section class="karte" id="eingabe">
+    <p class="schutz">Die Datei wird nur in diesem Browser gelesen. Es wird nichts hochgeladen oder gespeichert.</p>
+
+    <div class="reihe">
+      <label class="datei">
+        <input type="file" id="datei" accept=".portfolio" disabled>
+        <span class="knopf haupt">.portfolio-Datei wählen</span>
+      </label>
+      <button type="button" class="knopf" id="demo" disabled>Beispieldatei ansehen</button>
+    </div>
+
+    <details class="mehr">
+      <summary>Weitere Einstellungen</summary>
+      <div class="felder">
+        <label>Stichtag <input type="date" id="stichtag"></label>
+        <label class="datei klein">
+          <input type="file" id="config" accept=".yaml,.yml">
+          <span class="knopf">Eigene config.yaml laden</span>
+        </label>
+        <span id="config-name" class="leise">Ohne eigene Config gilt die Essanz-Namenskonvention.</span>
+        <button type="button" class="knopf leise-knopf" id="config-weg" hidden>Config entfernen</button>
+      </div>
+    </details>
+
+    <p id="status" class="status" role="status">Python wird geladen …</p>
+  </section>
+
+  <section id="ergebnis" hidden></section>
+</main>
+
+<footer class="wrap fuss">
+  <a href="https://github.com/essanz-dev/essanz-core">Quellcode (AGPL-3.0)</a>
+  <span id="technik" class="leise"></span>
+</footer>
+
+<script src="pyodide/pyodide.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

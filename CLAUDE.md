@@ -10,11 +10,14 @@ Oberflaeche: Deutsch.
 - Rauchtest: `python3 tests/smoke_test.py` (Kennzahlen gegen Referenzwerte: normal, anonym und mit fremden Kontennamen
   ueber `konten.objekte`; dazu Diagnose und Fehlerfaelle ohne Traceback)
 - Datenschutz-Check: `scripts/privacy_check.sh` (liest die private Denylist `../privacy-denylist.txt` ausserhalb des Repos)
+- Browser-App bauen: `python3 web/build.py`, ansehen mit `python3 -m http.server 8771 --directory web/dist`
+  (Port 8765 ist lokal belegt). Neue Kern-Module in `web/build.py` KERN eintragen, der Rauchtest prueft das.
 - Beispiel-Datei neu erzeugen: `python3 tools/make_example_portfolio.py` (muss zu `config.example.yaml` passen)
 
 ## Architektur (Datenfluss)
 `ppparse.py` (Binaerformat lesen) -> `analyze.py` (`Book`, `build()`: Bilanz, Kennzahlen, Monatsreihe, Rendite; liest Config)
 -> `schwellen.py` (Ampeln, Glossar), `stress.py`, `forecast.py` -> `empfehlungen.py` (regelbasierte Texte)
+-> `diagnose.py` (Einordnung pruefen, `bericht()` liefert JSON fuer Terminal und Browser)
 -> `make_dashboard.py` (fuegt `template.html` + `dash.js` + Daten zu einer HTML-Datei zusammen) -> `run_update.py` (CLI).
 `config.py` laedt `config.yaml` (Suchreihenfolge: `ESSANZ_CONFIG`, `./config.yaml`, mitgelieferte `config.example.yaml`).
 `objektdaten.py` und `steuer.py` lesen nur aus der Config.
@@ -27,7 +30,8 @@ Oberflaeche: Deutsch.
    brauchen einen Referenzwert im Smoke-Test.
 4. `make_dashboard.py` baut das Daten-Objekt fuer die Seite aus einer expliziten Feldliste. Neue Felder aus `analyze.build()`
    muessen dort ergaenzt werden, sonst fehlen sie im Browser (`undefined`).
-5. Vorlage `template.html`/`dash.js` ohne Netzwerk-Abhaengigkeiten halten (kein CDN, kein Tracking).
+5. Vorlage `template.html`/`dash.js` und die Browser-App `web/` ohne Netzwerk-Abhaengigkeiten zur Laufzeit halten
+   (kein CDN, kein Tracking; Pyodide wird von `web/build.py` mit ausgeliefert, CSP in `web/index.html`).
 6. Nicht im offenen Kern: PDF-Bericht, Excel-Export, Pruefroutinen (moeglicher Bezahlteil). Nicht ohne Auftrag ergaenzen.
 7. Externe Pull Requests nur mit Contributor-Vereinbarung (CLA) annehmen, solange Dual Licensing offen bleiben soll.
 8. Nichts pushen oder veroeffentlichen ohne ausdrueckliche Freigabe des Gruenders.

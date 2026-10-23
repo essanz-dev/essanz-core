@@ -127,8 +127,19 @@ def fehlerfaelle(tmp, fehler):
             fehler.append(f'{name}: rc={r.returncode}, erwartet Meldung mit {erwartet!r}:\n{r.stderr[-600:]}')
 
 
+def web_vollstaendig(fehler):
+    """Die Browser-App bekommt nur die Dateien aus web/build.py KERN; kein Modul darf fehlen."""
+    sys.path.insert(0, os.path.join(ROOT, 'web'))
+    import build
+    module = {f for f in os.listdir(ROOT) if f.endswith('.py') and f != 'run_update.py'}
+    fehlt = sorted(module - set(build.KERN))
+    if fehlt:
+        fehler.append(f'web/build.py KERN fehlt: {", ".join(fehlt)}')
+
+
 def main():
     fehler = []
+    web_vollstaendig(fehler)
     with tempfile.TemporaryDirectory() as tmp:
         fremde_namen(tmp, fehler)
         fehlerfaelle(tmp, fehler)
@@ -159,7 +170,7 @@ def main():
         for f in fehler:
             print(' -', f)
         return 1
-    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle)')
+    print('OK: Rauchtest bestanden (normal + anonym, fremde Kontennamen, Diagnose, Fehlerfälle, Web-Kern)')
     return 0
 
 

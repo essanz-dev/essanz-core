@@ -12,7 +12,8 @@ import config as _config
 
 
 def _eur(v):
-    return f'{v:>14,.2f} €'.replace(',', ' ')
+    s = f'{v:,.2f}'.replace(',', '_').replace('.', ',').replace('_', '.')
+    return f'{s:>14} €'
 
 
 def hinweise(b, snap):
@@ -78,8 +79,9 @@ def hinweise(b, snap):
 
     if beispiel_config():
         out.append(('Info', 'Es läuft die mitgelieferte Beispiel-Konfiguration mit erfundenen Daten. '
-                    'Für die eigene Datei: config.example.yaml nach config.yaml kopieren und anpassen '
-                    '(Vorschlag für den Abschnitt „konten:“ siehe unten).'))
+                    'Für die eigene Datei: config.example.yaml nach config.yaml kopieren und anpassen. '
+                    'Folgt die Datei nicht der Namenskonvention, steht unten ein Vorschlag für den '
+                    'Abschnitt „konten:“.'))
         return out + _waehrungen(b)
 
     for name in k['konten_gruppe']:
@@ -144,52 +146,72 @@ def konten_vorschlag(b, snap):
     return '\n'.join(zeilen)
 
 
-def ausgeben(b, stichtag):
+STUFEN = ('Fehler', 'Warnung', 'Info')
+SUMMEN = ('Immobilien', 'Wertpapiere', 'Liquidität', 'Immobilien-Konten', 'P2P', 'Krypto-Konten')
+
+
+def bericht(b, stichtag):
+    """Ergebnis der Diagnose als JSON-faehige Datenstruktur (Terminal und Browser-App)."""
     snap = b.snapshot(stichtag)
-    print(f'Konfiguration: {_config.pfad()}')
-    print(f'Stichtag {stichtag}, Buchungen von {b.start} bis {b.tx[-1]["date"]}, '
-          f'{len(b.tx)} Buchungen\n')
+    konten = [dict(name=a['name'], gruppe=b.acc_group[u], saldo=round(snap['cash'].get(u, 0.0), 2),
+                   grund=b.acc_reason[u], aufgeloest=a['retired'], waehrung=a['currency'])
+              for u, a in sorted(b.acc.items(),
+                                 key=lambda x: (x[1]['retired'], b.acc_group[x[0]], x[1]['name']))]
+    depots = [dict(name=p['name'], gruppe=b.pf_group[u], grund=b.pf_reason[u],
+                   wert=round(sum(x['value'] for x in snap['positions'] if x['portfolio'] == u), 2))
+              for u, p in sorted(b.pf.items(), key=lambda x: x[1]['name'])]
+    objekte = [dict(nr=no, name=o['name'], grund=b.obj_reason[no],
+                    konto=b.acc[o['account']]['name'] if o['account'] in b.acc else None,
+                    wertpapier=b.sec[o['sec']]['name'] if o['sec'] else None,
+                    darlehen=[b.acc[l]['name'] for l in o['loans']])
+               for no, o in sorted(b.objects.items(), key=lambda x: int(x[0]))]
+    g = snap['groups']
+    summen = [dict(name=k, wert=round(g[k], 2)) for k in SUMMEN if abs(g.get(k, 0.0)) >= 0.005]
+    summen.append(dict(name='Darlehen', wert=round(-snap['debt'], 2)))
+    summen.append(dict(name='Nettovermögen', wert=round(snap['net'], 2)))
+    hw = sorted(hinweise(b, snap), key=lambda x: STUFEN.index(x[0]))
+    return dict(
+        config=_config.pfad(), beispiel_config=beispiel_config(), stichtag=stichtag,
+        von=b.start, bis=b.tx[-1]['date'], buchungen=len(b.tx),
+        konten=konten, depots=depots, objekte=objekte, summen=summen,
+        hinweise=[dict(stufe=s, text=t) for s, t in hw],
+        vorschlag=konten_vorschlag(b, snap),
+    )
+
+
+def ausgeben(b, stichtag):
+    r = bericht(b, stichtag)
+    print(f'Konfiguration: {r["config"]}')
+    print(f'Stichtag {stichtag}, Buchungen von {r["von"]} bis {r["bis"]}, {r["buchungen"]} Buchungen\n')
 
     print('KONTEN')
-    for u, a in sorted(b.acc.items(), key=lambda x: (x[1]['retired'], b.acc_group[x[0]], x[1]['name'])):
-        saldo = snap['cash'].get(u, 0.0)
-        alt = '  (aufgelöst)' if a['retired'] else ''
-        print(f'  {a["name"][:40]:<40} {b.acc_group[u]:<18}{_eur(saldo)}   {b.acc_reason[u]}{alt}')
+    for k in r['konten']:
+        alt = '  (aufgelöst)' if k['aufgeloest'] else ''
+        print(f'  {k["name"][:40]:<40} {k["gruppe"]:<18}{_eur(k["saldo"])}   {k["grund"]}{alt}')
 
     print('\nDEPOTS')
-    for u, p in sorted(b.pf.items(), key=lambda x: x[1]['name']):
-        wert = sum(x['value'] for x in snap['positions'] if x['portfolio'] == u)
-        print(f'  {p["name"][:40]:<40} {b.pf_group[u]:<18}{_eur(wert)}   {b.pf_reason[u]}')
+    for d in r['depots']:
+        print(f'  {d["name"][:40]:<40} {d["gruppe"]:<18}{_eur(d["wert"])}   {d["grund"]}')
 
     print('\nOBJEKTE')
-    if not b.objects:
+    if not r['objekte']:
         print('  (keine erkannt)')
-    for no, o in sorted(b.objects.items(), key=lambda x: int(x[0])):
-        konto = b.acc[o['account']]['name'] if o['account'] in b.acc else '—'
-        sec = b.sec[o['sec']]['name'] if o['sec'] else '—'
-        loans = ', '.join(b.acc[l]['name'] for l in o['loans']) or '—'
-        print(f'  {no}: {o["name"]}   ({b.obj_reason[no]})')
-        print(f'       Konto {konto} · Wertpapier {sec} · Darlehen {loans}')
+    for o in r['objekte']:
+        print(f'  {o["nr"]}: {o["name"]}   ({o["grund"]})')
+        print(f'       Konto {o["konto"] or "—"} · Wertpapier {o["wertpapier"] or "—"} · '
+              f'Darlehen {", ".join(o["darlehen"]) or "—"}')
 
-    g = snap['groups']
     print('\nSUMMEN')
-    for key in ('Immobilien', 'Wertpapiere', 'Liquidität', 'Immobilien-Konten', 'P2P', 'Krypto-Konten'):
-        if abs(g.get(key, 0.0)) >= 0.005:
-            print(f'  {key:<20}{_eur(g[key])}')
-    print(f'  {"Darlehen":<20}{_eur(-snap["debt"])}')
-    print(f'  {"Nettovermögen":<20}{_eur(snap["net"])}')
+    for x in r['summen']:
+        print(f'  {x["name"]:<20}{_eur(x["wert"])}')
 
-    hw = hinweise(b, snap)
     print('\nHINWEISE')
-    if not hw:
+    if not r['hinweise']:
         print('  Keine. Die Zuordnung passt zur Konfiguration.')
-    for stufe in ('Fehler', 'Warnung', 'Info'):
-        for s, text in hw:
-            if s == stufe:
-                print(f'  [{s}] {text}')
-    vorschlag = konten_vorschlag(b, snap)
-    if vorschlag:
+    for h in r['hinweise']:
+        print(f'  [{h["stufe"]}] {h["text"]}')
+    if r['vorschlag']:
         print('\nVORSCHLAG FÜR config.yaml (prüfen und anpassen)')
-        print(vorschlag)
+        print(r['vorschlag'])
     print('\nZuordnung ändern: Abschnitt „konten:“ in config.yaml (Beispiel in config.example.yaml).')
-    return hw
+    return [(h['stufe'], h['text']) for h in r['hinweise']]
