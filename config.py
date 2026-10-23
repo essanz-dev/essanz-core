@@ -15,6 +15,7 @@ Wer eigene Daten hat: config.example.yaml nach config.yaml kopieren und mit den 
 Werten befuellen. Das Schema steht in config.example.yaml als Kommentar.
 """
 import os
+import re
 import functools
 
 try:
@@ -23,6 +24,10 @@ except ImportError:
     yaml = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+class ConfigFehler(Exception):
+    """Konfiguration fehlt oder ist nicht lesbar; die Meldung ist fuer Nutzer:innen gedacht."""
 
 
 def _find_path():
@@ -39,15 +44,26 @@ def _find_path():
 def load():
     """Laedt und cached die Konfiguration. Erneut aufrufen nach os.environ-Aenderung: load.cache_clear()."""
     if yaml is None:
-        raise RuntimeError(
+        raise ConfigFehler(
             "Das Paket 'pyyaml' fehlt. Installieren mit: pip install pyyaml")
     path = _find_path()
     if not os.path.exists(path):
-        raise FileNotFoundError(
+        raise ConfigFehler(
             f"Keine Konfiguration gefunden unter {path}. Kopiere config.example.yaml nach "
             "config.yaml und trage deine eigenen Werte ein, oder setze ESSANZ_CONFIG.")
-    with open(path, encoding='utf-8') as f:
-        data = yaml.safe_load(f) or {}
+    try:
+        with open(path, encoding='utf-8') as f:
+            data = yaml.safe_load(f) or {}
+    except yaml.YAMLError as e:
+        ort = getattr(e, 'problem_mark', None)
+        zeile = f' (Zeile {ort.line + 1}, Spalte {ort.column + 1})' if ort else ''
+        raise ConfigFehler(
+            f"Die Konfiguration {path} ist kein gültiges YAML{zeile}: "
+            f"{getattr(e, 'problem', None) or e}. Häufige Ursache: Tabulator statt Leerzeichen "
+            "oder ein Doppelpunkt im Text ohne Anführungszeichen.") from None
+    if not isinstance(data, dict):
+        raise ConfigFehler(f"Die Konfiguration {path} muss aus Abschnitten wie 'zinsbindungen:' "
+                           "bestehen, gefunden wurde etwas anderes.")
     data['_pfad'] = path
     return data
 
@@ -111,6 +127,74 @@ def allgemein():
         kontoname_anonym=a.get('kontoname_anonym', {}),
         benchmarks=a.get('benchmarks', DEFAULT_BENCHMARKS),
     )
+
+
+# ---------------------------------------------------------------------------
+# Kontenzuordnung (frueher fest in analyze.Book.classify)
+GRUPPEN_KONTO = ('Liquidität', 'Immobilien-Konten', 'Darlehen', 'P2P', 'Krypto-Konten')
+GRUPPEN_DEPOT = ('Wertpapiere', 'Immobilien')
+
+DEFAULT_KONTEN = dict(
+    darlehen_praefix=['Darlehenskonto'],
+    immobilien_konto_praefix=['Immobilie '],
+    immobilien_depot_praefix=['Immo'],
+    objekt_muster=r'Immobilie (\d+): (.*)',
+    darlehen_muster=r'Darlehenskonto (\d+)',
+    konten_gruppe={'Immobilien Rücklagenkonto': 'Immobilien-Konten',
+                   'Tagesgeldkonto Immo': 'Immobilien-Konten'},
+    depot_gruppe={'Immo Depot': 'Wertpapiere'},
+    objekte={},
+)
+
+
+def konten():
+    """Regeln, nach denen Konten, Depots und Objekte erkannt werden.
+
+    Ohne Abschnitt 'konten:' gilt die Essanz-Konvention (DEFAULT_KONTEN). Listen und Muster
+    aus der Config ersetzen die Voreinstellung, die Zuordnungen nach exaktem Namen
+    (konten_gruppe, depot_gruppe) ergaenzen sie. Die alten Listen allgemein.p2p_konten und
+    allgemein.krypto_konten gelten weiter.
+    """
+    k = load().get('konten') or {}
+    a = load().get('allgemein') or {}
+    out = {key: (list(v) if isinstance(v, list) else dict(v) if isinstance(v, dict) else v)
+           for key, v in DEFAULT_KONTEN.items()}
+    for key in ('darlehen_praefix', 'immobilien_konto_praefix', 'immobilien_depot_praefix',
+                'objekt_muster', 'darlehen_muster'):
+        if key in k:
+            v = k[key]
+            out[key] = ([] if v is None else [v] if isinstance(v, str) else list(v)) \
+                if key.endswith('praefix') else (v or None)
+    for n in a.get('p2p_konten', ()) or ():
+        out['konten_gruppe'][n] = 'P2P'
+    for n in a.get('krypto_konten', ()) or ():
+        out['konten_gruppe'][n] = 'Krypto-Konten'
+    out['konten_gruppe'].update(k.get('konten_gruppe') or {})
+    out['depot_gruppe'].update(k.get('depot_gruppe') or {})
+    out['objekte'] = {str(no): dict(o or {}) for no, o in (k.get('objekte') or {}).items()}
+    for no in out['objekte']:
+        if not no.isdigit():
+            raise ConfigFehler(f"konten.objekte: Objektnummer {no!r} ist keine Zahl. Die Nummer "
+                               "verbindet das Objekt mit objektstamm und steuer.afa, z. B. \"1\".")
+    for name, g in out['konten_gruppe'].items():
+        if g not in GRUPPEN_KONTO:
+            raise ConfigFehler(f"konten.konten_gruppe: Gruppe {g!r} für {name!r} gibt es nicht. "
+                               f"Möglich: {', '.join(GRUPPEN_KONTO)}.")
+    for name, g in out['depot_gruppe'].items():
+        if g not in GRUPPEN_DEPOT:
+            raise ConfigFehler(f"konten.depot_gruppe: Gruppe {g!r} für {name!r} gibt es nicht. "
+                               f"Möglich: {', '.join(GRUPPEN_DEPOT)}.")
+    for key in ('objekt_muster', 'darlehen_muster'):
+        if out[key]:
+            try:
+                rx = re.compile(out[key])
+            except re.error as e:
+                raise ConfigFehler(f"konten.{key}: {out[key]!r} ist kein gültiges Muster ({e}).") from None
+            if rx.groups < (2 if key == 'objekt_muster' else 1):
+                raise ConfigFehler(f"konten.{key}: Das Muster braucht "
+                                   + ("zwei Klammergruppen (Nummer, Name)" if key == 'objekt_muster'
+                                      else "eine Klammergruppe (Objektnummer)") + ".")
+    return out
 
 
 # Sinnvolle deutsche Standardwoerter, falls in der Konfiguration nichts angegeben ist.

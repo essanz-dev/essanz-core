@@ -1,6 +1,14 @@
 """Parser fuer Portfolio-Performance-Dateien (Binaerformat PPPBV1, Protobuf)."""
 import struct, zipfile, io, datetime
 
+
+class FormatFehler(ValueError):
+    """Die Datei laesst sich nicht lesen; die Meldung ist fuer Nutzer:innen gedacht."""
+
+
+SPEICHERN_HINWEIS = ('In Portfolio Performance die Datei über „Datei → Speichern unter …“ im Format '
+                     '„Binär“ ohne Passwort speichern und diese Kopie an Essanz geben.')
+
 def _rv(b, i):
     r = 0; s = 0
     while True:
@@ -18,7 +26,10 @@ def fields(b):
         if w == 0:
             v, i = _rv(b, i)
         elif w == 2:
-            l, i = _rv(b, i); v = b[i:i+l]; i += l
+            l, i = _rv(b, i)
+            if i + l > n:
+                raise ValueError('Datei endet mitten in einem Eintrag (abgeschnitten?)')
+            v = b[i:i+l]; i += l
         elif w == 5:
             v = struct.unpack('<f', b[i:i+4])[0]; i += 4
         elif w == 1:
@@ -48,14 +59,53 @@ TX_TYPES = {0:'PURCHASE',1:'SALE',2:'INBOUND_DELIVERY',3:'OUTBOUND_DELIVERY',
 UNIT_TYPES = {0:'GROSS_VALUE', 1:'TAX', 2:'FEE'}
 
 
-def load(path):
-    raw = open(path, 'rb').read()
+def _lesen(path):
+    try:
+        with open(path, 'rb') as f:
+            raw = f.read()
+    except FileNotFoundError:
+        raise FormatFehler(f'Die Datei {path} gibt es nicht. Pfad prüfen (Tipp: die Datei ins '
+                           'Terminalfenster ziehen, dann steht der Pfad richtig da).') from None
+    except IsADirectoryError:
+        raise FormatFehler(f'{path} ist ein Ordner, keine .portfolio-Datei.') from None
+    except OSError as e:
+        raise FormatFehler(f'Die Datei {path} lässt sich nicht öffnen: {e.strerror}.') from None
     if raw[:2] == b'PK':
-        with zipfile.ZipFile(io.BytesIO(raw)) as z:
-            name = 'data.portfolio' if 'data.portfolio' in z.namelist() else z.namelist()[0]
-            raw = z.read(name)
+        try:
+            with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                names = z.namelist()
+                name = 'data.portfolio' if 'data.portfolio' in names else names[0]
+                raw = z.read(name)
+        except (zipfile.BadZipFile, IndexError):
+            raise FormatFehler(f'Die Datei {path} ist beschädigt (ungültiges ZIP-Archiv).') from None
+    return raw
+
+
+def load(path):
+    raw = _lesen(path)
+    kopf = raw[:64].lstrip()
+    if raw[:9] == b'PORTFOLIO':
+        raise FormatFehler('Die Datei ist mit einem Passwort verschlüsselt. Essanz liest nur '
+                           'unverschlüsselte Dateien. ' + SPEICHERN_HINWEIS)
+    if kopf.startswith(b'<?xml') or kopf.startswith(b'<client'):
+        raise FormatFehler('Die Datei ist im XML-Format gespeichert. Essanz liest bisher nur das '
+                           'Binärformat. ' + SPEICHERN_HINWEIS)
     if raw[:6] != b'PPPBV1':
-        raise ValueError('Kein Portfolio-Performance-Binaerformat (PPPBV1).')
+        raise FormatFehler('Das ist keine Portfolio-Performance-Datei (Kennung PPPBV1 fehlt). '
+                           + SPEICHERN_HINWEIS)
+    try:
+        return _parse(raw)
+    except (ValueError, KeyError, IndexError, struct.error, UnicodeDecodeError,
+            OverflowError, OSError) as e:
+        raise FormatFehler(
+            'Die Datei hat die richtige Kennung, ließ sich aber nicht vollständig lesen '
+            f'({type(e).__name__}: {e}). Möglicherweise ist sie beschädigt oder stammt aus einer '
+            'Portfolio-Performance-Version, die Essanz noch nicht kennt. Bitte ein Issue mit der '
+            'PP-Version anlegen (ohne die Datei anzuhängen): '
+            'https://github.com/essanz-dev/essanz-core/issues') from None
+
+
+def _parse(raw):
     top = fields(raw[6:])
 
     accounts, portfolios, securities, prices, txs, taxonomies = {}, {}, {}, {}, [], []

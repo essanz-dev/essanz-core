@@ -28,14 +28,26 @@ Datei einfach im Browser öffnen.
 
 ## Mit eigenen Daten
 
-1. In Portfolio Performance: **Datei → Exportieren → Alle Buchungen …** bzw. die
-   `.portfolio`-Datei selbst verwenden (Essanz liest das native Binärformat direkt, kein
-   Export nötig).
+1. Die `.portfolio`-Datei aus Portfolio Performance direkt verwenden, kein Export nötig.
+   Essanz liest das Binärformat ohne Passwort. Ist die Datei als XML oder verschlüsselt
+   gespeichert, in Portfolio Performance über **Datei → Speichern unter …** eine Kopie im
+   Format „Binär“ ohne Passwort anlegen. Essanz schreibt nie in die Datei.
 2. `config.example.yaml` nach `config.yaml` kopieren und mit den eigenen Werten befüllen
    (siehe Kommentare in der Datei — Zinsbindungen, Objektstammdaten, Steuerwerte,
-   Wechselkurse). `config.yaml` steht in `.gitignore` und wird nie versehentlich
-   committet.
-3. Ausführen:
+   Wechselkurse, Kontenzuordnung). `config.yaml` steht in `.gitignore` und wird nie
+   versehentlich committet.
+3. Prüfen, wie Essanz die Datei einordnet:
+
+   ```bash
+   python3 run_update.py /pfad/zur/eigenen.portfolio --diagnose --config config.yaml
+   ```
+
+   Die Diagnose listet jedes Konto und Depot mit seiner Gruppe (Liquidität, Darlehen,
+   Objektkonto, Immobilien-Depot …) und dem Grund dafür, die erkannten Objekte und
+   Hinweise, wo Datei und `config.yaml` nicht zusammenpassen. Folgt die Datei nicht der
+   Namenskonvention unten, schlägt sie einen Abschnitt `konten:` zum Einfügen vor. Es wird
+   nichts gerechnet oder geschrieben.
+4. Ausführen:
 
    ```bash
    python3 run_update.py /pfad/zur/eigenen.portfolio --config config.yaml --stichtag 2026-08-31
@@ -47,13 +59,27 @@ Fassung ohne Adressen und Mieternamen, gedacht zum Teilen außerhalb der eigenen
 Kein Abschnitt in `config.yaml` ist Pflicht — ohne `steuer:` bleiben die Steuerspalten
 leer, ohne `zinsbindungen:` fehlt die Fälligkeitsleiste, der Rest funktioniert trotzdem.
 
+### Konten in Portfolio Performance
+
+Essanz braucht für jede Immobilie drei Dinge aus der PP-Datei: ein **Objektkonto** (Miete,
+Kosten, Annuität), ein **Wertpapier**, dessen Kurs der Verkehrswert ist (in einem eigenen
+Immobilien-Depot), und das **Darlehenskonto** (Auszahlung als Umbuchung vom
+Darlehenskonto auf das Objektkonto, Annuität als Umbuchung zurück).
+
+Ohne weitere Angaben erkennt Essanz diese an den Namen `Immobilie 1: Musterstraße 5`
+(Konto und Wertpapier), `Darlehenskonto 1` und einem Depot, dessen Name mit `Immo`
+beginnt. Wer anders benannt hat, muss nichts umbenennen, sondern ordnet in `config.yaml`
+unter `konten:` nach exaktem Namen zu (Beispiel am Ende von `config.example.yaml`).
+Alle übrigen Konten zählen als Liquidität, alle übrigen Depots als Wertpapiere. Passt die
+Zuordnung nicht, weist der normale Lauf darauf hin; Details zeigt `--diagnose`.
+
 ## Wie die Konfiguration funktioniert
 
 Alle persönlichen Daten (Adressen, Mieternamen, Darlehenskonditionen, Steuerwerte) liegen
 ausschließlich in `config.yaml` — nirgends im Code. `config.py` lädt diese Datei einmal
 und cached sie; `objektdaten.py` und `steuer.py` lesen daraus, `analyze.py` liest beim
 Import die allgemeinen Schwellwerte (Wechselkurse, welche Objekte selbstgenutzt sind,
-P2P-/Krypto-Kontenlisten, Vergleichsindizes). Wer `essanz-core` klont und nur die eigene
+Kontenzuordnung, Vergleichsindizes). Wer `essanz-core` klont und nur die eigene
 `config.yaml` schreibt, bekommt sofort ein persönliches Dashboard, ohne eine Zeile Code
 anzufassen. Wer mehr ändern will — andere Kennzahlen, andere Texte — findet unten, welche
 Datei wofür zuständig ist.
@@ -72,7 +98,8 @@ Datei wofür zuständig ist.
 | `forecast.py` | Kurzfristige Liquiditätsvorschau anhand erkannter Daueraufträge. |
 | `empfehlungen.py` | Regelbasierte Handlungsempfehlungen aus den Kennzahlen — generisch formuliert, ohne Objektnamen. Eigene, persönlichere Fassung ist einfach eine andere Datei mit derselben `build(data)`-Signatur. |
 | `make_dashboard.py` | Setzt Template, Daten, Chart-JS (`dash.js`) und Empfehlungen zum fertigen HTML zusammen. |
-| `run_update.py` | Kommandozeilen-Einstieg. |
+| `diagnose.py` | Zeigt mit `--diagnose`, wie Konten, Depots und Objekte eingeordnet werden, und prüft Datei und Config gegeneinander. |
+| `run_update.py` | Kommandozeilen-Einstieg, übersetzt Fehler in verständliche Meldungen (`--debug` zeigt den vollen Python-Fehler). |
 | `tools/make_example_portfolio.py` | Erzeugt `beispiel.portfolio` — die fiktive Demo-Datei. Kein Teil der Bibliothek selbst. |
 
 ## Umfang dieses Kerns

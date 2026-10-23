@@ -10,6 +10,10 @@
 #   verkehrswert_herleitung: optional, wenn ein Gutachten mehrere Objekte gemeinsam bewertet
 #   steuer:             optional; ohne diesen Abschnitt bleiben die Steuerspalten leer
 #   allgemein:          Wechselkurse, welche Objekte selbstgenutzt sind, Schwellwerte
+#   konten:             optional; wie Konten, Depots und Objekte erkannt werden (siehe ganz unten)
+#
+# Erst prüfen, wie Essanz die eigene Datei einordnet:
+#   python3 run_update.py <datei.portfolio> --diagnose --config config.yaml
 
 zinsbindungen:
   "Darlehenskonto 1":
@@ -131,3 +135,29 @@ allgemein:
       kurz: "MSCI World (Beispielreihe)"
       art: "Frei erfundene Vergleichsreihe für dieses Beispiel."
       leitindex: true
+
+# Kontenzuordnung. Ohne diesen Abschnitt gilt die Essanz-Konvention, nach der auch
+# beispiel.portfolio aufgebaut ist:
+#   Objektkonto und Objekt-Wertpapier heißen "Immobilie N: <Name>", das Darlehen
+#   "Darlehenskonto N", das Depot mit den Objekt-Wertpapieren beginnt mit "Immo".
+# Wer seine Konten in Portfolio Performance anders benannt hat, muss nichts umbenennen,
+# sondern ordnet hier nach exaktem Namen zu. --diagnose schlägt einen Entwurf vor.
+#
+# konten:
+#   objekte:                       # je Immobilie: Nummer wie in objektstamm/steuer.afa
+#     "1":
+#       name: "Bergstraße 14"
+#       konto: "Mietkonto Bergstraße"          # Konto mit Miete, Kosten, Annuität
+#       darlehen: ["Baufi Bergstraße"]         # ein oder mehrere Darlehenskonten
+#       wertpapier: "ETW Bergstraße"           # Wertpapier, dessen Kurs der Verkehrswert ist
+#   konten_gruppe:                 # exakter Kontoname -> Liquidität, Immobilien-Konten,
+#     "Rücklage WEG": Immobilien-Konten        #   Darlehen, P2P, Krypto-Konten
+#     "Privatkredit": Darlehen
+#   depot_gruppe:                  # exakter Depotname -> Wertpapiere oder Immobilien
+#     "Sachwerte": Immobilien
+#   # Namensregeln, nur falls die Voreinstellung nicht passt (Anfang des Namens):
+#   darlehen_praefix: ["Darlehenskonto"]
+#   immobilien_konto_praefix: ["Immobilie "]
+#   immobilien_depot_praefix: ["Immo"]
+#   objekt_muster: 'Immobilie (\d+): (.*)'    # Gruppe 1 = Nummer, Gruppe 2 = Name
+#   darlehen_muster: 'Darlehenskonto (\d+)'   # Gruppe 1 = Objektnummer

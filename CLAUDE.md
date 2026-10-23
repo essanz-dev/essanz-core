@@ -7,7 +7,8 @@ Oberflaeche: Deutsch.
 ## Befehle
 - Demo-Lauf: `python3 run_update.py beispiel.portfolio ausgabe --stichtag 2026-08-31` (benoetigt `pyyaml`)
 - Mit eigener Konfiguration: `python3 run_update.py <datei.portfolio> ausgabe --config config.yaml [--anonym]`
-- Rauchtest: `python3 tests/smoke_test.py` (prueft Kennzahlen gegen feste Referenzwerte, normal + anonym)
+- Rauchtest: `python3 tests/smoke_test.py` (Kennzahlen gegen Referenzwerte: normal, anonym und mit fremden Kontennamen
+  ueber `konten.objekte`; dazu Diagnose und Fehlerfaelle ohne Traceback)
 - Datenschutz-Check: `scripts/privacy_check.sh` (liest die private Denylist `../privacy-denylist.txt` ausserhalb des Repos)
 - Beispiel-Datei neu erzeugen: `python3 tools/make_example_portfolio.py` (muss zu `config.example.yaml` passen)
 
@@ -33,6 +34,10 @@ Oberflaeche: Deutsch.
 
 ## Hinweise
 - Geldbetraege im Binaerformat: Betraege in Cent, Stueckzahlen und Kurse mit 1e8 skaliert; Datum als Epoch-Sekunden.
-- Konten-Konvention: `Immobilie N: <Name>` (Objektkonto/-wertpapier), `Darlehenskonto N` (Darlehen zu Objekt N); Auszahlung
-  = Umbuchung vom Darlehenskonto auf das Objektkonto, Annuitaet = Umbuchung zurueck.
+- Konten-Konvention (Voreinstellung in `config.DEFAULT_KONTEN`): `Immobilie N: <Name>` (Objektkonto/-wertpapier),
+  `Darlehenskonto N` (Darlehen zu Objekt N), Depot mit Praefix `Immo`; Auszahlung = Umbuchung vom Darlehenskonto auf
+  das Objektkonto, Annuitaet = Umbuchung zurueck. Abweichende Namen ordnet `konten:` in der Config zu (exakter Name
+  vor Praefix). Keine Kontonamen mehr in `analyze.py` hartcodieren.
+- Diagnose: `python3 run_update.py <datei> --diagnose [--config ...]` (Modul `diagnose.py`). Fehler fuer Nutzer:innen als
+  `ppparse.FormatFehler` bzw. `config.ConfigFehler` werfen; `run_update.py` zeigt sie ohne Traceback (`--debug` mit).
 - Das Unterverzeichnis `ausgabe/` und `config.yaml` sind gitignored.

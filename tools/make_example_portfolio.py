@@ -109,7 +109,9 @@ def months_between(d0, d1):
     return out
 
 
-def build():
+def build(umbenennen=None):
+    """umbenennen: {alter Name: neuer Name} fuer Konten, Depots, Wertpapiere (Tests fremder Kontennamen)."""
+    N = lambda name: (umbenennen or {}).get(name, name)
     top = []
     START = datetime.date(2024, 9, 1)
     ASOF = datetime.date(2026, 8, 31)
@@ -124,20 +126,20 @@ def build():
         immo1='acc-immo1', immo2='acc-immo2', immo3='acc-immo3',
         d1='acc-d1', d2='acc-d2', d3='acc-d3',
     )
-    top.append((3, account_msg(acc['giro'], 'Giro')))
-    top.append((3, account_msg(acc['tagesgeld'], 'Tagesgeld')))
-    top.append((3, account_msg(acc['immo1'], 'Immobilie 1: Bergstraße 14')))
-    top.append((3, account_msg(acc['immo2'], 'Immobilie 2: Ahornweg 7')))
-    top.append((3, account_msg(acc['immo3'], 'Immobilie 3: Lindenallee 22')))
-    top.append((3, account_msg(acc['d1'], 'Darlehenskonto 1')))
-    top.append((3, account_msg(acc['d2'], 'Darlehenskonto 2')))
-    top.append((3, account_msg(acc['d3'], 'Darlehenskonto 3')))
+    top.append((3, account_msg(acc['giro'], N('Giro'))))
+    top.append((3, account_msg(acc['tagesgeld'], N('Tagesgeld'))))
+    top.append((3, account_msg(acc['immo1'], N('Immobilie 1: Bergstraße 14'))))
+    top.append((3, account_msg(acc['immo2'], N('Immobilie 2: Ahornweg 7'))))
+    top.append((3, account_msg(acc['immo3'], N('Immobilie 3: Lindenallee 22'))))
+    top.append((3, account_msg(acc['d1'], N('Darlehenskonto 1'))))
+    top.append((3, account_msg(acc['d2'], N('Darlehenskonto 2'))))
+    top.append((3, account_msg(acc['d3'], N('Darlehenskonto 3'))))
 
     # ---- Depots ----
     pf_depot = 'pf-depot'
     pf_immo = 'pf-immo'
-    top.append((4, portfolio_msg(pf_depot, 'Depot')))
-    top.append((4, portfolio_msg(pf_immo, 'Immobilien')))
+    top.append((4, portfolio_msg(pf_depot, N('Depot'))))
+    top.append((4, portfolio_msg(pf_immo, N('Immobilien'))))
 
     # ---- Wertpapiere / Immobilien-Wertpapiere mit Kursreihe ----
     months = months_between(START, ASOF)
@@ -151,11 +153,11 @@ def build():
                      (eday(datetime.date(2026, 8, 1)), 360700.0)]
 
     sec = dict(etf='sec-etf', msci='sec-msci', immo1='sec-immo1', immo2='sec-immo2', immo3='sec-immo3')
-    top.append((2, security_msg(sec['etf'], 'Globaler Aktien-ETF', prices=etf_prices)))
-    top.append((2, security_msg(sec['msci'], 'MSCI World', prices=msci_prices)))
-    top.append((2, security_msg(sec['immo1'], 'Immobilie 1: Bergstraße 14', prices=immo1_prices)))
-    top.append((2, security_msg(sec['immo2'], 'Immobilie 2: Ahornweg 7', prices=immo2_prices)))
-    top.append((2, security_msg(sec['immo3'], 'Immobilie 3: Lindenallee 22', prices=immo3_prices)))
+    top.append((2, security_msg(sec['etf'], N('Globaler Aktien-ETF'), prices=etf_prices)))
+    top.append((2, security_msg(sec['msci'], N('MSCI World'), prices=msci_prices)))
+    top.append((2, security_msg(sec['immo1'], N('Immobilie 1: Bergstraße 14'), prices=immo1_prices)))
+    top.append((2, security_msg(sec['immo2'], N('Immobilie 2: Ahornweg 7'), prices=immo2_prices)))
+    top.append((2, security_msg(sec['immo3'], N('Immobilie 3: Lindenallee 22'), prices=immo3_prices)))
 
     tx = []
 

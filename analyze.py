@@ -31,9 +31,7 @@ FX_DATE = _CFG['fx_date']
 # Selbstgenutzte Objekte (Objektnummer aus dem Kontonamen "Immobilie N: ...").
 SELBSTGENUTZT = _CFG['selbstgenutzt']
 
-# Konten, die als P2P- bzw. Krypto-Gruppe gelten (Kontoname exakt).
-P2P_KONTEN = set(_CFG['p2p_konten'])
-KRYPTO_KONTEN = set(_CFG['krypto_konten'])
+# Welche Konten als P2P, Krypto, Darlehen usw. gelten, steht in config.konten().
 
 
 def eday(d):
@@ -52,6 +50,10 @@ class Book:
         self.tx = self.d['transactions']
         self.pidx = {k: ([p[0] for p in v], [p[1] for p in v]) for k, v in self.d['prices'].items()}
         real = [t['date'] for t in self.tx]
+        if not real:
+            raise ppparse.FormatFehler(
+                'Die Datei enthält keine Buchungen. Essanz braucht mindestens die Einzahlungen '
+                'und Käufe, aus denen sich die Kontostände ergeben.')
         today = datetime.date.today()
         self.asof = asof or today.isoformat()
         self.start = real[0]
@@ -59,37 +61,91 @@ class Book:
 
     # ---------- Klassifikation der Konten und Depots ----------
     def classify(self):
-        self.acc_group = {}
+        """Ordnet Konten, Depots und Objekte nach den Regeln aus config.konten() zu.
+
+        Reihenfolge: exakter Name (konten_gruppe/depot_gruppe) > explizite Objekte >
+        Namensanfang (Praefixe) > Liquiditaet bzw. Wertpapiere. Der Grund jeder Zuordnung
+        steht in acc_reason/pf_reason (fuer run_update.py --diagnose).
+        """
+        k = _config.konten()
+        self.kontenregeln = k
+        by_name = defaultdict(list)
+        for u, a in self.acc.items():
+            by_name[a['name']].append(u)
+        sec_by_name = defaultdict(list)
+        for u, s in self.sec.items():
+            sec_by_name[s['name']].append(u)
+
+        # Objekte: zuerst explizit aus der Config, dann nach Namensmuster
+        self.objects = {}
+        self.obj_reason = {}
+        obj_acc, obj_loan = {}, {}
+        for no, o in k['objekte'].items():
+            konto = o.get('konto')
+            # Platzhalter statt None, damit ein fehlendes Konto keine Buchungen ohne Konto erfasst
+            u = by_name.get(konto, ['<fehlt: Objekt %s>' % no])[0] if konto else '<fehlt: Objekt %s>' % no
+            self.objects[no] = dict(no=no, name=o.get('name') or konto or 'Objekt %s' % no,
+                                    account=u, loans=[], sec=None)
+            self.obj_reason[no] = 'config: konten.objekte'
+            if u in self.acc:
+                obj_acc[u] = no
+            dl = o.get('darlehen') or []
+            for name in ([dl] if isinstance(dl, str) else dl):
+                for lu in by_name.get(name, []):
+                    self.objects[no]['loans'].append(lu); obj_loan[lu] = no
+            ws = o.get('wertpapier')
+            if ws and sec_by_name.get(ws):
+                self.objects[no]['sec'] = sec_by_name[ws][0]
+        muster = re.compile(k['objekt_muster']) if k['objekt_muster'] else None
+        dmuster = re.compile(k['darlehen_muster']) if k['darlehen_muster'] else None
+        if muster:
+            for u, a in self.acc.items():
+                m = muster.match(a['name'])
+                if m and m.group(1) not in self.objects and u not in obj_acc:
+                    self.objects[m.group(1)] = dict(no=m.group(1), name=m.group(2), account=u,
+                                                    loans=[], sec=None)
+                    self.obj_reason[m.group(1)] = 'Namensmuster „%s“' % k['objekt_muster']
+                    obj_acc[u] = m.group(1)
+        if dmuster:
+            for u, a in self.acc.items():
+                m = dmuster.match(a['name'])
+                if (m and u not in obj_loan and m.group(1) in self.objects
+                        and self.obj_reason[m.group(1)] != 'config: konten.objekte'):
+                    self.objects[m.group(1)]['loans'].append(u); obj_loan[u] = m.group(1)
+        if muster:
+            for u, s in self.sec.items():
+                m = muster.match(s['name'])
+                if (m and m.group(1) in self.objects and self.objects[m.group(1)]['sec'] is None):
+                    self.objects[m.group(1)]['sec'] = u
+
+        self.acc_group, self.acc_reason = {}, {}
         for u, a in self.acc.items():
             n = a['name']
-            if n.startswith('Darlehenskonto'):
-                g = 'Darlehen'
-            elif n.startswith('Immobilie ') or n in ('Immobilien Rücklagenkonto', 'Tagesgeldkonto Immo'):
-                g = 'Immobilien-Konten'
-            elif n in P2P_KONTEN:
-                g = 'P2P'
-            elif n in KRYPTO_KONTEN:
-                g = 'Krypto-Konten'
+            if n in k['konten_gruppe']:
+                g, r = k['konten_gruppe'][n], 'config: exakter Name'
+            elif u in obj_loan:
+                g, r = 'Darlehen', 'Darlehen zu Objekt %s' % obj_loan[u]
+            elif u in obj_acc:
+                g, r = 'Immobilien-Konten', 'Objektkonto zu Objekt %s' % obj_acc[u]
+            elif any(n.startswith(p) for p in k['darlehen_praefix']):
+                g, r = 'Darlehen', 'Name beginnt mit „%s“' % next(p for p in k['darlehen_praefix'] if n.startswith(p))
+            elif any(n.startswith(p) for p in k['immobilien_konto_praefix']):
+                g, r = 'Immobilien-Konten', 'Name beginnt mit „%s“' % next(
+                    p for p in k['immobilien_konto_praefix'] if n.startswith(p))
             else:
-                g = 'Liquidität'
-            self.acc_group[u] = g
-        self.pf_group = {}
+                g, r = 'Liquidität', 'keine Regel passt (Standard)'
+            self.acc_group[u], self.acc_reason[u] = g, r
+        self.pf_group, self.pf_reason = {}, {}
         for u, p in self.pf.items():
-            self.pf_group[u] = 'Immobilien' if p['name'].startswith('Immo') and p['name'] != 'Immo Depot' else 'Wertpapiere'
-        # Objektzuordnung Immobilie <-> Darlehen
-        self.objects = {}
-        for u, a in self.acc.items():
-            m = re.match(r'Immobilie (\d+): (.*)', a['name'])
-            if m:
-                self.objects[m.group(1)] = dict(no=m.group(1), name=m.group(2), account=u, loans=[], sec=None)
-        for u, a in self.acc.items():
-            m = re.match(r'Darlehenskonto (\d+)', a['name'])
-            if m and m.group(1) in self.objects:
-                self.objects[m.group(1)]['loans'].append(u)
-        for u, s in self.sec.items():
-            m = re.match(r'Immobilie (\d+): (.*)', s['name'])
-            if m and m.group(1) in self.objects:
-                self.objects[m.group(1)]['sec'] = u
+            n = p['name']
+            if n in k['depot_gruppe']:
+                g, r = k['depot_gruppe'][n], 'config: exakter Name'
+            elif any(n.startswith(x) for x in k['immobilien_depot_praefix']):
+                g, r = 'Immobilien', 'Name beginnt mit „%s“' % next(
+                    x for x in k['immobilien_depot_praefix'] if n.startswith(x))
+            else:
+                g, r = 'Wertpapiere', 'keine Regel passt (Standard)'
+            self.pf_group[u], self.pf_reason[u] = g, r
         immo_pf = [u for u, g in self.pf_group.items() if g == 'Immobilien']
         self.immo_pf = set(immo_pf)
 
@@ -340,8 +396,8 @@ def _vormonat(asof):
     return (d.replace(day=1) - datetime.timedelta(days=1)).isoformat()
 
 
-def build(path, asof=None, mit_vergleich=True):
-    b = Book(path, asof)
+def build(path, asof=None, mit_vergleich=True, book=None):
+    b = book or Book(path, asof)
     snap = b.snapshot(b.asof)
     months = b.monthly()
     fl = b.flows()
